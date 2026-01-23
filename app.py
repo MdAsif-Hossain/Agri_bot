@@ -32,13 +32,25 @@ class AgentState(TypedDict):
 def retrieve(state: AgentState):
     """Call Server to search PDFs"""
     try:
-        res = requests.post(f"{TOOL_URL}/search", json={"query": state["question"]})
+        res = requests.post(
+            f"{TOOL_URL}/search",
+            json={"query": state["question"]},
+            timeout=10,
+        )
+        res.raise_for_status()
         data = res.json()
         if not data["results"]:
             return {"context": "MISSING"}
-        return {"context": "\n".join(data["results"])}
-    except:
-        return {"context": "Error connecting to server"}
+        context_lines = []
+        for item in data["results"]:
+            content = item.get("content", "")
+            metadata = item.get("metadata", {})
+            source = metadata.get("source", "unknown source")
+            page = metadata.get("page", "unknown page")
+            context_lines.append(f"{content}\nSOURCE: {source} (page {page})")
+        return {"context": "\n\n".join(context_lines)}
+    except requests.RequestException as exc:
+        return {"context": f"Error connecting to server: {exc}"}
 
 def reason(state: AgentState):
     """Check if math is needed (Bonus Logic)"""
@@ -46,7 +58,7 @@ def reason(state: AgentState):
     if "calculate" in q or "how much" in q:
         # Simple extraction for demo: "5g for 2 acres"
         import re
-        nums = re.findall(r"\d+", q)
+        nums = re.findall(r"\d+(?:\.\d+)?", q)
         if len(nums) >= 2: # Found dose and area
             return {"tool_out": f"CALC:{nums[0]},{nums[1]}"}
     return {"tool_out": "NONE"}
@@ -55,20 +67,25 @@ def execute_tool(state: AgentState):
     """Call Server to Calculate"""
     if state["tool_out"].startswith("CALC"):
         dose, area = state["tool_out"].replace("CALC:", "").split(",")
-        res = requests.post(f"{TOOL_URL}/calculate", json={"dose": float(dose), "area": float(area)})
+        res = requests.post(
+            f"{TOOL_URL}/calculate",
+            json={"dose": float(dose), "area": float(area)},
+            timeout=10,
+        )
+        res.raise_for_status()
         return {"tool_out": res.json()["msg"]}
-    return {"tool_out": "No calculation needed."}
+    return {"tool_out": ""}
 
 def generate(state: AgentState):
     """Final Answer"""
     if state["context"] == "MISSING":
         return {"final_ans": "I don't know based on the provided documents."} # Exact Phrase Rule
 
+    tool_context = f"\nTOOL RESULT: {state['tool_out']}" if state["tool_out"] else ""
     prompt = f"""<|im_start|>system
 You are an expert. Answer using ONLY the context below. 
 If context is missing, say 'I don't know based on the provided documents.'
-CONTEXT: {state['context']}
-TOOL RESULT: {state['tool_out']}
+CONTEXT: {state['context']}{tool_context}
 <|im_end|>
 <|im_start|>user
 {state['question']}
