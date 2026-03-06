@@ -3,6 +3,11 @@ streamlit>=1.30.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
 
+# API Server (FastAPI backend for mobile thin client + React UI)
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+
 # LLM
 llama-cpp-python>=0.2.0
 
@@ -17,8 +22,12 @@ rank-bm25>=0.2.2
 # Reranking
 flashrank>=0.2.0
 
-# PDF Processing
-pypdf>=3.0.0
+# PDF Processing (Layout-aware extraction — Marker/Surya)
+marker-pdf>=1.0.0
+
+# OCR for Scanned Content
+pytesseract>=0.3.10
+Pillow>=10.0.0
 
 # Text Splitting
 langchain-text-splitters>=0.0.1
@@ -26,7 +35,7 @@ langchain-text-splitters>=0.0.1
 # Knowledge Graph
 # (uses stdlib sqlite3)
 
-# Logging
+# Structured Logging
 structlog>=23.0.0
 
 # Translation (BUET BanglaT5)
@@ -43,3 +52,7 @@ pyttsx3>=2.90
 # Audio Recording/Processing
 sounddevice>=0.4.6
 soundfile>=0.12.0
+
+# Testing
+pytest>=7.0.0
+pytest-asyncio>=0.23.0

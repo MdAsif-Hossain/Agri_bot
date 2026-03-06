@@ -9,7 +9,6 @@ Usage:
 """
 
 import sys
-import logging
 import time
 from pathlib import Path
 
@@ -24,18 +23,16 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from config import settings
+from agribot.logging_config import setup_logging, get_logger
 from agribot.ingestion.pdf_loader import load_pdfs
 from agribot.ingestion.chunker import chunk_pages
 from agribot.ingestion.index_builder import build_indexes
 from agribot.knowledge_graph.schema import KnowledgeGraph
 from agribot.knowledge_graph.seed_data import seed_knowledge_graph
 
-# --- Logging ---
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-)
-logger = logging.getLogger("agribot.ingest")
+# --- Structured Logging ---
+setup_logging(json_output=False, log_level="INFO")
+logger = get_logger("agribot.ingest")
 
 
 def main():

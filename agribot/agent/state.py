@@ -15,7 +15,7 @@ class AgentState(TypedDict):
     # --- Processing ---
     query_normalized: str        # Cleaned query
     query_expanded: str          # After KG entity linking + expansion
-    kg_entities: list            # Linked KG entity info
+    kg_entities: list[dict]      # Linked KG entity info [{bn, en, type}]
 
     # --- Retrieval ---
     evidences: list              # Retrieved EvidenceChunk objects
@@ -25,13 +25,13 @@ class AgentState(TypedDict):
     # --- Generation ---
     answer: str                  # Generated answer (English)
     answer_bn: str               # Bengali translation (BanglaT5)
-    citations: list              # List of citation strings
+    citations: list[str]         # List of citation strings
 
     # --- Verification ---
     is_verified: bool            # Whether answer passed verification
     verification_reason: str     # Reason if not verified
 
-    # --- Voice ---
+    # --- Multimodal Input ---
     input_mode: str              # "text", "voice", or "image"
     input_audio_path: str        # Path to recorded audio (if voice input)
 

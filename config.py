@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Optional
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 
 class AgriConfig(BaseSettings):
@@ -70,10 +70,11 @@ class AgriConfig(BaseSettings):
         if self.MODEL_PATH is None:
             self.MODEL_PATH = self.BASE_DIR / "models" / "qwen3b.gguf"
 
-    class Config:
-        env_prefix = "AGRIBOT_"
-        env_file = ".env"
-        extra = "ignore"
+    model_config = ConfigDict(
+        env_prefix="AGRIBOT_",
+        env_file=".env",
+        extra="ignore",
+    )
 
 
 # Singleton config instance

@@ -5,9 +5,12 @@ Uses FlashRank for fast, lightweight reranking.
 """
 
 import logging
+from pathlib import Path
+
 from flashrank import Ranker, RerankRequest
 
 from agribot.retrieval.hybrid import EvidenceChunk
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +26,9 @@ class Reranker:
     ):
         self.threshold = threshold
         self.top_n = top_n
+        cache_dir = str(settings.BASE_DIR / "models" / "reranker")
         logger.info("Loading reranker model: %s", model_name)
-        self.ranker = Ranker(model_name=model_name, cache_dir="models/reranker")
+        self.ranker = Ranker(model_name=model_name, cache_dir=cache_dir)
         logger.info("Reranker loaded successfully")
 
     def rerank(

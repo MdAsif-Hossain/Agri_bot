@@ -1,0 +1,224 @@
+"""
+Offline Image Processor for crop/plant photos.
+
+Combines OCR (Tesseract) for text-on-image extraction with
+rule-based symptom detection from visual features.
+Designed to work fully offline for rural deployment.
+
+When a VLM (Vision Language Model) is available, it uses that for
+richer image captioning. Otherwise falls back to OCR + heuristic
+color/pattern analysis.
+"""
+
+import logging
+from pathlib import Path
+from threading import Lock
+
+logger = logging.getLogger(__name__)
+
+# Singleton
+_processor_instance: "ImageProcessor | None" = None
+_processor_lock = Lock()
+
+
+class ImageProcessor:
+    """
+    Offline image analysis for agricultural crop photos.
+
+    Capabilities:
+    1. OCR extraction (text on labels, packaging, disease guides)
+    2. Color-based symptom hints (yellowing, browning, spots)
+    3. VLM captioning when available (e.g., via llama-cpp multimodal)
+    """
+
+    def __init__(self, vlm_model_path: str | None = None):
+        """
+        Initialize the image processor.
+
+        Args:
+            vlm_model_path: Optional path to a GGUF VLM model for captioning.
+                            If None, uses OCR + heuristic analysis only.
+        """
+        self.vlm_model_path = vlm_model_path
+        self._vlm = None
+
+        logger.info(
+            "ImageProcessor initialized (VLM: %s)",
+            "enabled" if vlm_model_path else "OCR+heuristic only",
+        )
+
+    def describe_image(self, image_path: str | Path) -> str:
+        """
+        Analyze a crop/plant image and return a textual description.
+
+        Tries VLM captioning first, then falls back to OCR + heuristics.
+
+        Args:
+            image_path: Path to the image file (JPG, PNG, etc.)
+
+        Returns:
+            Text description of the image content/symptoms
+        """
+        image_path = Path(image_path)
+        if not image_path.exists():
+            raise FileNotFoundError(f"Image not found: {image_path}")
+
+        parts = []
+
+        # 1. Try VLM captioning
+        vlm_caption = self._vlm_caption(image_path)
+        if vlm_caption:
+            parts.append(f"Visual analysis: {vlm_caption}")
+
+        # 2. OCR for any text in the image
+        ocr_text = self._ocr_extract(image_path)
+        if ocr_text:
+            parts.append(f"Text in image: {ocr_text}")
+
+        # 3. Color/symptom heuristics
+        symptom_hints = self._analyze_symptoms(image_path)
+        if symptom_hints:
+            parts.append(f"Observed symptoms: {symptom_hints}")
+
+        if not parts:
+            return "Image uploaded but could not extract meaningful information. Please describe the issue in text."
+
+        return " | ".join(parts)
+
+    def _vlm_caption(self, image_path: Path) -> str:
+        """
+        Generate a caption using an offline Vision Language Model.
+
+        Currently a placeholder for VLM integration (e.g., LLaVA, BakLLaVA
+        via llama-cpp-python multimodal support).
+        """
+        if not self.vlm_model_path:
+            return ""
+
+        try:
+            # Future: integrate llama-cpp-python with clip projection
+            # from llama_cpp import Llama
+            # from llama_cpp.llama_chat_format import Llava15ChatHandler
+            logger.info("VLM captioning not yet fully integrated")
+            return ""
+        except Exception as e:
+            logger.warning("VLM captioning failed: %s", e)
+            return ""
+
+    def _ocr_extract(self, image_path: Path) -> str:
+        """Extract text from image using Tesseract OCR."""
+        try:
+            import pytesseract
+            from PIL import Image
+
+            img = Image.open(image_path)
+            # Try English + Bengali OCR
+            text = pytesseract.image_to_string(img, lang="eng+ben")
+            text = text.strip()
+
+            if len(text) > 10:  # Only return meaningful text
+                logger.info("OCR extracted %d chars from image", len(text))
+                return text[:500]  # Limit length
+            return ""
+
+        except ImportError:
+            logger.debug("pytesseract not available for image OCR")
+            return ""
+        except Exception as e:
+            logger.warning("Image OCR failed: %s", e)
+            return ""
+
+    def _analyze_symptoms(self, image_path: Path) -> str:
+        """
+        Analyze image for agricultural symptom indicators using color analysis.
+
+        Detects common visual patterns:
+        - Yellowing (nitrogen deficiency, tungro, etc.)
+        - Brown spots (blast, blight, leaf spot)
+        - Wilting patterns
+        - White powdery patches (powdery mildew)
+        """
+        try:
+            from PIL import Image
+            import numpy as np
+
+            img = Image.open(image_path).convert("RGB")
+            # Resize for fast analysis
+            img = img.resize((256, 256))
+            pixels = np.array(img, dtype=np.float32)
+
+            # Compute color channel statistics
+            r_mean = pixels[:, :, 0].mean()
+            g_mean = pixels[:, :, 1].mean()
+            b_mean = pixels[:, :, 2].mean()
+
+            # Compute HSV for better color analysis
+            r, g, b = pixels[:, :, 0], pixels[:, :, 1], pixels[:, :, 2]
+            max_c = np.maximum(np.maximum(r, g), b)
+            min_c = np.minimum(np.minimum(r, g), b)
+            diff = max_c - min_c
+
+            # Saturation
+            saturation = np.where(max_c > 0, diff / max_c, 0)
+            avg_saturation = saturation.mean()
+
+            symptoms = []
+
+            # Yellowing detection (high R, high G, low B relative to green)
+            yellow_ratio = (r_mean + g_mean) / (2 * max(b_mean, 1))
+            if yellow_ratio > 2.5 and g_mean > 100:
+                symptoms.append("significant yellowing detected (possible nutrient deficiency or disease)")
+
+            # Brown spots (moderate R, low G, low B)
+            brown_mask = (r > 100) & (g < 100) & (b < 80)
+            brown_fraction = brown_mask.mean()
+            if brown_fraction > 0.05:
+                symptoms.append(f"brown discoloration detected ({brown_fraction:.0%} of image area)")
+
+            # Predominantly green (healthy plant reference)
+            if g_mean > r_mean and g_mean > b_mean and avg_saturation > 0.3:
+                green_dominance = g_mean / max(r_mean, 1)
+                if green_dominance > 1.3:
+                    symptoms.append("predominantly green/healthy plant tissue visible")
+
+            # White/pale patches (possible mildew)
+            white_mask = (r > 200) & (g > 200) & (b > 200)
+            white_fraction = white_mask.mean()
+            if white_fraction > 0.1:
+                symptoms.append(f"white/pale patches detected ({white_fraction:.0%} of area, possible mildew)")
+
+            # Dark patches (possible rot or severe damage)
+            dark_mask = (max_c < 50)
+            dark_fraction = dark_mask.mean()
+            if dark_fraction > 0.15:
+                symptoms.append("dark/necrotic areas detected")
+
+            if symptoms:
+                return "; ".join(symptoms)
+            return ""
+
+        except ImportError:
+            logger.debug("PIL/numpy not available for symptom analysis")
+            return ""
+        except Exception as e:
+            logger.warning("Symptom analysis failed: %s", e)
+            return ""
+
+
+def get_image_processor(vlm_model_path: str | None = None) -> ImageProcessor:
+    """
+    Get or create the singleton ImageProcessor instance.
+
+    Thread-safe lazy initialization.
+    """
+    global _processor_instance
+
+    if _processor_instance is not None:
+        return _processor_instance
+
+    with _processor_lock:
+        if _processor_instance is not None:
+            return _processor_instance
+        _processor_instance = ImageProcessor(vlm_model_path=vlm_model_path)
+
+    return _processor_instance

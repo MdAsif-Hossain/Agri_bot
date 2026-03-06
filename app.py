@@ -10,7 +10,6 @@ Chat-based agricultural advisory with:
 """
 
 import sys
-import logging
 from pathlib import Path
 
 import streamlit as st
@@ -21,6 +20,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from config import settings
+from agribot.logging_config import setup_logging, get_logger
 from agribot.llm.engine import get_llm
 from agribot.ingestion.index_builder import IndexBundle
 from agribot.retrieval.hybrid import HybridRetriever
@@ -33,12 +33,9 @@ from agribot.translation.bangla_t5 import get_translator
 from agribot.voice.stt import get_stt
 from agribot.voice.tts import get_tts
 
-# --- Logging ---
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-)
-logger = logging.getLogger("agribot.ui")
+# --- Structured Logging ---
+setup_logging(json_output=False, log_level="INFO")
+logger = get_logger("agribot.ui")
 
 
 # =============================================================================
@@ -290,15 +287,52 @@ for idx, msg in enumerate(st.session_state.messages):
                             st.warning(f"TTS error: {e}")
 
 
-# --- Voice Input ---
+# --- Voice & Image Input ---
 st.markdown("---")
-voice_col, text_col = st.columns([1, 5])
+voice_col, image_col, text_col = st.columns([1, 1, 4])
 with voice_col:
     st.markdown("**🎤 Voice Input**")
     audio_data = st.audio_input("Record your question", key="voice_input")
+with image_col:
+    st.markdown("**📷 Image Input**")
+    uploaded_image = st.file_uploader(
+        "Upload crop photo", type=["jpg", "jpeg", "png"],
+        key="image_input", label_visibility="collapsed",
+    )
 
 user_query = None
 input_mode = "text"
+
+# Process image input
+if uploaded_image is not None and "last_image" not in st.session_state:
+    st.session_state.last_image = True
+    with st.spinner("📷 Analyzing image..."):
+        try:
+            import tempfile
+            from agribot.vision.image_processor import get_image_processor
+
+            # Save uploaded image to temp file
+            suffix = "." + (uploaded_image.name.split(".")[-1] if "." in uploaded_image.name else "jpg")
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                tmp.write(uploaded_image.getvalue())
+                tmp_path = tmp.name
+
+            processor = get_image_processor()
+            description = processor.describe_image(tmp_path)
+            user_query = f"Based on this crop image: {description}"
+            input_mode = "image"
+
+            st.success(f"📷 Image analyzed: {description[:200]}")
+
+            # Clean up temp file
+            import os
+            os.unlink(tmp_path)
+        except Exception as e:
+            st.error(f"❌ Image analysis failed: {e}")
+            logger.error("Image analysis error", error=str(e), exc_info=True)
+else:
+    if uploaded_image is None and "last_image" in st.session_state:
+        del st.session_state.last_image
 
 # Process voice input
 if audio_data is not None and "last_audio" not in st.session_state:
@@ -336,7 +370,7 @@ if text_query := st.chat_input("Ask about crops, diseases, pests, fertilizers...
 
 if user_query:
     # Display user message
-    prefix = "🎤 " if input_mode == "voice" else ""
+    prefix = {"voice": "🎤 ", "image": "📷 "}.get(input_mode, "")
     st.session_state.messages.append({"role": "user", "content": f"{prefix}{user_query}"})
     with st.chat_message("user"):
         st.markdown(f"{prefix}{user_query}")
