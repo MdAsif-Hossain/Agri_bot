@@ -21,6 +21,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 # --- Ensure project root is on path ---
@@ -387,6 +389,71 @@ async def kg_search(q: str):
             for e in entities[:20]
         ]
     )
+
+
+# =============================================================================
+# TTS ENDPOINT
+# =============================================================================
+
+class TTSRequest(BaseModel):
+    """Text-to-speech request."""
+    text: str = Field(..., min_length=1, max_length=5000, description="Text to synthesize")
+    language: str = Field(default="en", description="Language: 'en' or 'bn'")
+
+
+@app.post("/tts")
+async def text_to_speech(request: TTSRequest):
+    """
+    Synthesize text to speech and return WAV audio.
+
+    Returns audio/wav stream for playback in the React frontend.
+    """
+    tts = _services.get("tts")
+    if not tts:
+        raise HTTPException(status_code=503, detail="TTS service not available")
+
+    try:
+        audio_path = tts.save_audio_temp(request.text, language=request.language)
+        audio_path = Path(audio_path)
+
+        if not audio_path.exists():
+            raise HTTPException(status_code=500, detail="TTS audio generation failed")
+
+        def audio_stream():
+            with open(audio_path, "rb") as f:
+                yield from iter(lambda: f.read(8192), b"")
+            audio_path.unlink(missing_ok=True)
+
+        return StreamingResponse(
+            audio_stream(),
+            media_type="audio/wav",
+            headers={"Content-Disposition": "inline; filename=tts_output.wav"},
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("TTS error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"TTS error: {e}")
+
+
+# =============================================================================
+# STATIC FILES — Serve React production build
+# =============================================================================
+
+_FRONTEND_DIR = PROJECT_ROOT / "frontend" / "dist"
+
+if _FRONTEND_DIR.exists():
+    # Serve static assets (JS, CSS, images)
+    app.mount("/assets", StaticFiles(directory=str(_FRONTEND_DIR / "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """SPA catch-all: serve index.html for client-side routing."""
+        file_path = _FRONTEND_DIR / full_path
+        if file_path.is_file():
+            return FileResponse(str(file_path))
+        return FileResponse(str(_FRONTEND_DIR / "index.html"))
 
 
 # =============================================================================
