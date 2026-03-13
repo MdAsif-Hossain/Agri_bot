@@ -54,6 +54,28 @@ class TestRiskDetection:
         assert is_risky_query("pesticide amount for tomato") is True
         assert is_risky_query("fungicide rate for wheat") is True
 
+    def test_bengali_risk_patterns(self):
+        """Bengali dosage/chemical patterns are detected."""
+        assert is_risky_query("কীটনাশক মাত্রা কত?") is True        # pesticide dosage
+        assert is_risky_query("ছত্রাকনাশক ব্যবহার") is True        # fungicide usage
+        assert is_risky_query("আগাছানাশক স্প্রে হার") is True      # herbicide spray rate
+        assert is_risky_query("প্রতি একর কত কেজি সার?") is True    # per acre kg fertilizer
+        assert is_risky_query("10 মিলি প্রতি লিটার") is True       # 10 ml per liter
+        assert is_risky_query("কতটুকু দিতে হবে?") is True          # how much to apply
+
+    def test_safe_bengali_queries(self):
+        """Safe Bengali queries pass through."""
+        assert is_risky_query("ধানের রোগের লক্ষণ কি?") is False     # disease symptoms
+        assert is_risky_query("শীতকালে কি চাষ করতে হয়?") is False  # what to grow in winter
+
+    def test_escalation_messages_exist(self):
+        """Escalation messages contain expected content."""
+        from agribot.agent.grounding_policy import ESCALATION_EN, ESCALATION_BN
+        assert "BARI" in ESCALATION_EN
+        assert "extension officer" in ESCALATION_EN
+        assert "BARI" in ESCALATION_BN
+        assert "কৃষি সম্প্রসারণ" in ESCALATION_BN
+
 
 # =============================================================================
 # Cited Facts Extraction

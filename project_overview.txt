@@ -1,0 +1,79 @@
+# AgriBot: A Production-Grade Offline Multimodal Agentic RAG System
+
+## 1. Project Motivation and Overview
+Agriculture serves as the backbone of Bangladesh's economy, yet marginalized farmers and localized extension officers frequently lack access to reliable, instantaneous agricultural advisory due to intermittent data connectivity, language barriers (English science vs. Colloquial Bengali), and a shortage of experts.
+
+**AgriBot** is engineered directly to solve this problem. It is a highly optimized, fully offline-first **Retrieval-Augmented Generation (RAG)** system that runs on consumer-grade edge hardware (e.g., standard NGO laptops equipped with an RTX 3050 GPU or completely via CPU). It combines multimodal inputs (Voice, Text, and Vision) with a bounded agentic self-correction loop to deliver trusted, citation-backed answers directly to farmers in their local dialect without requiring any cloud dependency.
+
+---
+
+## 2. Core Novelty and Contributions
+AgriBot pioneers several technical implementations specifically tailored for offline, low-resource deployment domains:
+
+### 2.1 Agentic Self-Correction Loop (Bounded LangGraph)
+Traditional RAG blindly grabs documents and generates text, often leading to hallucinations if the vector search missed the mark. AgriBot uses a **LangGraph-driven agentic loop**. It retrieves, but then **Grades** the relevance of the retrieved evidence against the query.
+* If the evidence is poor, the system invokes a **Rewrite/Expand** function to query the database a second time using synonyms.
+* If the final execution yields an uncertain answer, it explicitly **Refuses** to guess (crucial for dangerous chemical dosages) and asks the user a targeted follow-up question.
+
+### 2.2 Dialect-to-Science Knowledge Graph (KG)
+Relying solely on lexical or semantic search fails when a farmer uses a colloquial term (e.g., *'pata mora rog'*) while the scientific manual says "Leaf Blight."
+* We integrated an **Offline Information Extraction SQLite Graph**. When a query enters the system, it traverses the local graph mapping aliases to canonical scientific entities. 
+* This allows the retriever to augment the query with proper technical terminology before searching the FAISS index, drastically increasing `Recall@K`.
+
+### 2.3 Noise-Resistant Multimodal PDF Understanding
+Agricultural manuals are notoriously messy, containing complex diagrams, multi-column tables, repeating headers, and extensive indices.
+* Standard Python PDF readers (`pypdf2`) merge all text linearly, destroying reading order and table structure.
+* AgriBot utilizes **Marker**, a layout-aware extraction engine that converts PDFs into clean Markdown, preserving tables as structural text and ignoring repetitive visual noise. This creates ultra-high-quality "chunks" that preserve factual context.
+
+### 2.4 Built-in Evaluation Metrics for Researchers
+Unlike consumer chatbots, AgriBot acts as an academic demonstration tool. The React user interface includes a specialized **Diagnostics Drawer** attached to every message.
+* It exposes the internal LLM reasoning, Trace ID, Retrieval Grounding Status (Pass/Refuse), Evidence Grade, and Node Latency Breakdown for real-time human verification.
+
+---
+
+## 3. Deep Dive into System Architecture
+
+The architecture relies entirely on decoupled Python abstractions and a highly-reactive single-page application frontend.
+
+### 3.1 Orchestration and API (`api.py`)
+Built on **FastAPI**, creating incredibly resilient endpoints due to `Pydantic` model validation. The REST API exposes routes (`/v1/chat`, `/v1/chat/voice`, `/v1/chat/vision`) that stream the multimodality requests into the unified `_run_agent` orchestration pipeline. Data schemas ensure that all trace variables and array citations safely reach the user interface.
+
+### 3.2 Hybrid Retrieval Pipeline (`/agribot/retrieval`)
+AgriBot doesn't rely solely on dense vectors, as embedding models (like `all-MiniLM-L6-v2`) naturally struggle with out-of-vocabulary acronyms or obscure chemical fertilizers.
+* **Component 1 - FAISS Dense Search:** Maps semantic meaning and conceptually identical phrases (e.g., mapping "yellowing leaves" to "chlorosis").
+* **Component 2 - BM25 Lexical Sparse Search:** Uses TF-IDF mathematical properties to ensure exact keyword and numeric matching for highly specific queries.
+* **Component 3 - Cross-Encoder Reranking (`ms-marco-MiniLM-L-6-v2`):** Since searching massive document sets creates noise, the CrossEncoder mathematically evaluates the Top-30 retrieved items and resorts them, filtering out distractor paragraphs before the context is fed to the LLM.
+
+### 3.3 Large Language Engine (`/agribot/llm`)
+The brain of the pipeline is powered by **Qwen 2.5 1.5B Instruct**, aggressively quantized down to an 8-bit `GGUF` format.
+* Executed via **`llama-cpp-python`**, allowing it to leverage C/C++ memory implementations that fit comfortably within 3GB of RAM.
+* We execute highly restrictive **System Prompts** demanding JSON arrays. The inference is designed to generate structural citations `[source.pdf, page X]` mapped exactly to the chunk metadata provided by the hybrid retriever.
+
+### 3.4 Voice Input Processing (`/agribot/voice/stt.py`)
+To tackle the colloquial speech of farmers, the system uses **`faster-whisper` (CTranslate2)**.
+* Standard Whisper is too heavy for CPU inference. `faster-whisper` optimizes the matrix multiplications, allowing 2-second Bengali audio clips to transcribe near instantly locally.
+* We bypass Voice Activity Detection (VAD) hallucinations by enforcing specific `language="bn"` constraints and feeding agricultural glossary prompts into the model's initialization string to anchor its vocabulary.
+
+### 3.5 Frontend Web Client (`/frontend`)
+The presentation layer is built utilizing **React** and **Vite** with **Tailwind CSS**.
+* Employs local state reduction for instant UI responses without needing WebSockets.
+* Implements a "Glassmorphism" graphical aesthetic and handles audio/image Blob conversions entirely inside the browser before hitting the FastAPI host.
+
+---
+
+## 4. Hardware Constraints and Setup Requirements
+AgriBot was rigorously crafted to run in constrained Edge environments.
+* **Minimum viable platform:** A standard laptop equipped with 8GB RAM and an Intel/AMD CPU. Voice, dense retrieval, and LLM inference will dynamically map out of `float32` into heavily compressed precision formats.
+* **Optimal edge platform:** A machine with an NVIDIA RTX 3050 (4GB VRAM) or RTX 3060.
+* **Dependencies:** Requires zero Docker images. Instead relies on a pure `pip` virtual environment and node package ecosystem for rapid deployment in areas where Docker Hub may be geoblocked or throttled.
+
+---
+
+## 5. System Weaknesses and Future Focus Areas
+
+While fully functional and robust against network instability, there are tradeoffs required to maintain offline edge feasibility:
+
+1. **Information Extraction Limitations:** The reliance on `Marker` for PDF ingestion is highly CPU/GPU intensive during the initial "Build Mode". A 100-page manual can take upwards of ten minutes to ingest fully layout-aware on older devices.
+2. **Context Window Limitations (GGML Crash Risk):** Passing massive blocks of text to a 1.5B parameter engine risks blowing out the context window (causing a core tensor assertion error in `llama.cpp`). We strictly truncate evidence injections to the top 3-5 chunks, which might truncate vital cross-document synthesis on extremely complex multi-part questions.
+3. **Response Latency (Lack of Streaming):** Because AgriBot executes a LangGraph validation phase (ensuring the answer is safe and formatting the citations correctly structured in a JSON envelope), we cannot stream text to the UI token-by-token. Users experience a 3-5 second processing block before the UI updates.
+4. **Bilingual Semantic Spacing Loss:** Our dense text-embedding model (`all-MiniLM-L6-v2`) is English-dominant. Translating Bengali queries before vectorizing introduces a narrow band of semantic noise. Future expansions should involve training or swapping in a natively bilingual dual-encoder model targeting the Bengali linguistic sphere for retrieval.

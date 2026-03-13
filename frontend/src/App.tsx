@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import MessageBubble from "./components/MessageBubble";
+import VoiceConfirmBanner from "./components/VoiceConfirmBanner";
 import Composer from "./components/Composer";
-import { sendChat, sendVoice, sendImage, exportCaseReport } from "./lib/api";
-import type { Message, ChatResponse } from "./lib/api";
+import { sendChat, sendVoice, sendVoiceConfirm, sendImage, exportCaseReport } from "./lib/api";
+import type { Message, ChatResponse, VoiceBlock } from "./lib/api";
 
 const SUGGESTIONS = [
   "What causes rice blast disease?",
@@ -20,20 +21,31 @@ export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingVoiceConfirm, setPendingVoiceConfirm] = useState<{ voice: VoiceBlock; traceId: string } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isLoading]);
 
-  const addResponse = useCallback((r: ChatResponse, mode: "text" | "voice" | "image") => {
-    setMessages(prev => [...prev, {
-      id: uid(), role: "assistant", content: r.answer, answer_bn: r.answer_bn,
-      input_mode: mode, citations: r.citations, kg_entities: r.kg_entities,
-      evidence_grade: r.evidence_grade, is_verified: r.is_verified,
-      verification_reason: r.verification_reason, retry_count: r.retry_count,
-      trace_id: r.trace_id, timings_ms: r.timings_ms,
-      grounding_action: r.grounding_action, follow_up_suggestions: r.follow_up_suggestions,
-      timestamp: Date.now(),
-    }]);
+  const addResponse = useCallback((r: ChatResponse, mode: "text" | "voice" | "voice_confirmed" | "image", userMsgId: string) => {
+    setMessages(prev => {
+      const newMessages = [...prev];
+      if (r.parsed_query) {
+        const uIdx = newMessages.findIndex(m => m.id === userMsgId);
+        if (uIdx >= 0) {
+          const prefix = mode === "voice" || mode === "voice_confirmed" ? "🎤 " : mode === "image" ? "📷 " : "";
+          newMessages[uIdx] = { ...newMessages[uIdx], content: `${prefix}${r.parsed_query}` };
+        }
+      }
+      return [...newMessages, {
+        id: uid(), role: "assistant", content: r.answer, answer_bn: r.answer_bn,
+        input_mode: mode, citations: r.citations, kg_entities: r.kg_entities,
+        evidence_grade: r.evidence_grade, is_verified: r.is_verified,
+        verification_reason: r.verification_reason, retry_count: r.retry_count,
+        diagnostics: r.diagnostics, voice: r.voice, image: r.image,
+        grounding_action: r.grounding_action, follow_up_suggestions: r.follow_up_suggestions,
+        timestamp: Date.now(),
+      }];
+    });
   }, []);
 
   const addError = useCallback((msg: string) => {
@@ -41,21 +53,54 @@ export default function App() {
   }, []);
 
   const handleText = useCallback(async (q: string) => {
-    setMessages(prev => [...prev, { id: uid(), role: "user", content: q, input_mode: "text", timestamp: Date.now() }]);
+    const uId = uid();
+    setMessages(prev => [...prev, { id: uId, role: "user", content: q, input_mode: "text", timestamp: Date.now() }]);
     setIsLoading(true);
-    try { addResponse(await sendChat(q), "text"); } catch (e: any) { addError(e.message); } finally { setIsLoading(false); }
+    try { addResponse(await sendChat(q), "text", uId); } catch (e: any) { addError(e.message); } finally { setIsLoading(false); }
   }, [addResponse, addError]);
 
   const handleVoice = useCallback(async (blob: Blob) => {
-    setMessages(prev => [...prev, { id: uid(), role: "user", content: "🎤 Voice message sent…", input_mode: "voice", timestamp: Date.now() }]);
+    const uId = uid();
+    setMessages(prev => [...prev, { id: uId, role: "user", content: "🎤 Transcribing voice...", input_mode: "voice", timestamp: Date.now() }]);
     setIsLoading(true);
-    try { addResponse(await sendVoice(blob), "voice"); } catch (e: any) { addError(e.message); } finally { setIsLoading(false); }
+    try {
+      const r = await sendVoice(blob);
+      // Check if voice needs confirmation
+      if (r.voice?.needs_confirmation) {
+        setPendingVoiceConfirm({
+          voice: r.voice,
+          traceId: r.diagnostics?.trace_id || "",
+        });
+        // Update user message to show transcript
+        setMessages(prev => {
+          const msgs = [...prev];
+          const idx = msgs.findIndex(m => m.id === uId);
+          if (idx >= 0) msgs[idx] = { ...msgs[idx], content: `🎤 "${r.voice!.transcript_suspected || r.voice!.transcript}" (needs confirmation)` };
+          return msgs;
+        });
+      } else {
+        addResponse(r, "voice", uId);
+      }
+    } catch (e: any) { addError(e.message); } finally { setIsLoading(false); }
   }, [addResponse, addError]);
 
-  const handleImage = useCallback(async (file: File, q: string) => {
-    setMessages(prev => [...prev, { id: uid(), role: "user", content: q ? `📷 ${q}` : `📷 Analyzing: ${file.name}`, input_mode: "image", timestamp: Date.now() }]);
+  const handleVoiceConfirm = useCallback(async (editedText: string, traceId: string) => {
+    setPendingVoiceConfirm(null);
+    const uId = uid();
+    setMessages(prev => [...prev, { id: uId, role: "user", content: `🎤✓ ${editedText}`, input_mode: "voice_confirmed", timestamp: Date.now() }]);
     setIsLoading(true);
-    try { addResponse(await sendImage(file, q), "image"); } catch (e: any) { addError(e.message); } finally { setIsLoading(false); }
+    try { addResponse(await sendVoiceConfirm(editedText, traceId), "voice_confirmed", uId); } catch (e: any) { addError(e.message); } finally { setIsLoading(false); }
+  }, [addResponse, addError]);
+
+  const handleVoiceCancel = useCallback(() => {
+    setPendingVoiceConfirm(null);
+  }, []);
+
+  const handleImage = useCallback(async (file: File, q: string) => {
+    const uId = uid();
+    setMessages(prev => [...prev, { id: uId, role: "user", content: q ? `📷 ${q}` : `📷 Analyzing: ${file.name}`, input_mode: "image", timestamp: Date.now() }]);
+    setIsLoading(true);
+    try { addResponse(await sendImage(file, q), "image", uId); } catch (e: any) { addError(e.message); } finally { setIsLoading(false); }
   }, [addResponse, addError]);
 
   return (
@@ -109,6 +154,21 @@ export default function App() {
                 </div>
               </div>
             )}
+
+            {/* Voice confirmation banner */}
+            {pendingVoiceConfirm && (
+              <VoiceConfirmBanner
+                transcript={pendingVoiceConfirm.voice.transcript_suspected || pendingVoiceConfirm.voice.transcript}
+                confidence={pendingVoiceConfirm.voice.asr_confidence}
+                language={pendingVoiceConfirm.voice.asr_language}
+                warnings={pendingVoiceConfirm.voice.asr_warnings}
+                suggestedActions={pendingVoiceConfirm.voice.suggested_actions}
+                traceId={pendingVoiceConfirm.traceId}
+                onConfirm={handleVoiceConfirm}
+                onCancel={handleVoiceCancel}
+              />
+            )}
+
             <div ref={endRef} />
           </div>
         </div>

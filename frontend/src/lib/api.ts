@@ -1,6 +1,36 @@
 /**
  * AgriBot API Client — typed fetch for /v1/* endpoints.
+ *
+ * Response types mirror the nested ChatResponseV1 schema.
  */
+
+// --- Nested block types ---
+
+export interface DiagnosticsBlock {
+    trace_id: string;
+    timings_ms: Record<string, number>;
+    mode_flags: string[];
+    warnings: string[];
+}
+
+export interface VoiceBlock {
+    transcript: string;
+    asr_language: string;
+    asr_confidence: number;
+    asr_warnings: string[];
+    needs_confirmation: boolean;
+    transcript_suspected: string;
+    suggested_actions: string[];
+}
+
+export interface ImageBlock {
+    pipeline_used: "ocr_baseline" | "classifier_assisted" | "ocr_fallback";
+    analysis_summary: Record<string, unknown>;
+    limitations: string[];
+    possible_conditions: { label: string; confidence: number }[];
+}
+
+// --- Main response ---
 
 export interface ChatResponse {
     answer: string;
@@ -12,10 +42,13 @@ export interface ChatResponse {
     verification_reason: string;
     retry_count: number;
     input_mode: string;
-    trace_id: string;
-    timings_ms: Record<string, number>;
     grounding_action: string;
     follow_up_suggestions: string[];
+    parsed_query?: string;
+    // Nested blocks
+    diagnostics: DiagnosticsBlock;
+    voice?: VoiceBlock | null;
+    image?: ImageBlock | null;
 }
 
 export interface KGEntity {
@@ -45,18 +78,20 @@ export interface Message {
     role: "user" | "assistant";
     content: string;
     answer_bn?: string;
-    input_mode?: "text" | "voice" | "image";
+    input_mode?: "text" | "voice" | "voice_confirmed" | "image";
     citations?: string[];
     kg_entities?: KGEntity[];
     evidence_grade?: string;
     is_verified?: boolean;
     verification_reason?: string;
     retry_count?: number;
-    trace_id?: string;
-    timings_ms?: Record<string, number>;
     grounding_action?: string;
     follow_up_suggestions?: string[];
     timestamp: number;
+    // Nested diagnostics
+    diagnostics?: DiagnosticsBlock;
+    voice?: VoiceBlock | null;
+    image?: ImageBlock | null;
 }
 
 const API = import.meta.env.VITE_API_URL || "";
@@ -67,7 +102,15 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
     return r.json();
 }
 
-export const sendChat = (query: string) => json<ChatResponse>("/v1/chat", { method: "POST", body: JSON.stringify({ query }) });
+export const sendChat = (query: string, inputMode = "text", traceId = "") =>
+    json<ChatResponse>("/v1/chat", {
+        method: "POST",
+        body: JSON.stringify({ query, input_mode: inputMode, trace_id: traceId }),
+    });
+
+/** Send confirmed/edited voice transcript as text query. */
+export const sendVoiceConfirm = (text: string, traceId: string) =>
+    sendChat(text, "voice_confirmed", traceId);
 
 export async function sendVoice(blob: Blob): Promise<ChatResponse> {
     const f = new FormData(); f.append("audio", blob, "recording.wav");
@@ -100,8 +143,7 @@ export function exportCaseReport(messages: Message[]): void {
         kg_entities: m.kg_entities || [],
         evidence_grade: m.evidence_grade || "",
         is_verified: m.is_verified || false,
-        trace_id: m.trace_id || "",
-        timings_ms: m.timings_ms || {},
+        diagnostics: m.diagnostics || {},
         grounding_action: m.grounding_action || "",
     }));
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });

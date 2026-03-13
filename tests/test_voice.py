@@ -142,6 +142,129 @@ class TestSpeechToText:
         finally:
             Path(tmp_path).unlink(missing_ok=True)
 
+    @patch("agribot.voice.stt.SpeechToText._ensure_model")
+    def test_structured_return_has_confidence(self, mock_ensure):
+        """Transcription result includes confidence and warnings."""
+        from agribot.voice.stt import SpeechToText
+
+        stt = SpeechToText()
+
+        mock_segment = MagicMock()
+        mock_segment.start = 0.0
+        mock_segment.end = 2.0
+        mock_segment.text = "test text"
+        mock_segment.avg_logprob = -0.3
+        mock_segment.no_speech_prob = 0.1
+
+        mock_info = MagicMock()
+        mock_info.language = "en"
+        mock_info.language_probability = 0.95
+
+        stt._model = MagicMock()
+        stt._model.transcribe.return_value = ([mock_segment], mock_info)
+
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            f.write(b"fake audio data")
+            tmp_path = f.name
+
+        try:
+            result = stt.transcribe(tmp_path)
+            # Must have all required keys
+            assert "confidence" in result
+            assert "warnings" in result
+            assert isinstance(result["confidence"], float)
+            assert isinstance(result["warnings"], list)
+            assert 0.0 <= result["confidence"] <= 1.0
+            # With avg_logprob=-0.3, confidence = 1 + (-0.3) = 0.7
+            assert abs(result["confidence"] - 0.7) < 0.05
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+    @patch("agribot.voice.stt.SpeechToText._ensure_model")
+    def test_low_confidence_emits_warning(self, mock_ensure):
+        """Very low avg_logprob produces low_confidence warning."""
+        from agribot.voice.stt import SpeechToText
+
+        stt = SpeechToText()
+
+        mock_segment = MagicMock()
+        mock_segment.start = 0.0
+        mock_segment.end = 2.0
+        mock_segment.text = "noisy garble"
+        mock_segment.avg_logprob = -0.8  # Very low → conf = 0.2
+        mock_segment.no_speech_prob = 0.2
+
+        mock_info = MagicMock()
+        mock_info.language = "en"
+        mock_info.language_probability = 0.9
+
+        stt._model = MagicMock()
+        stt._model.transcribe.return_value = ([mock_segment], mock_info)
+
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            f.write(b"fake")
+            tmp_path = f.name
+
+        try:
+            result = stt.transcribe(tmp_path)
+            assert result["confidence"] < 0.4
+            assert "low_confidence" in result["warnings"]
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+    @patch("agribot.voice.stt.SpeechToText._ensure_model")
+    def test_no_speech_emits_warning(self, mock_ensure):
+        """Empty transcription produces no_speech warning."""
+        from agribot.voice.stt import SpeechToText
+
+        stt = SpeechToText()
+
+        mock_info = MagicMock()
+        mock_info.language = "en"
+        mock_info.language_probability = 0.5
+
+        stt._model = MagicMock()
+        stt._model.transcribe.return_value = ([], mock_info)  # No segments
+
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            f.write(b"fake")
+            tmp_path = f.name
+
+        try:
+            result = stt.transcribe(tmp_path)
+            assert result["text"] == ""
+            assert result["confidence"] == 0.0
+            assert "no_speech" in result["warnings"]
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+    def test_confidence_gating_threshold(self):
+        """Low confidence below threshold should trigger confirmation."""
+        # Test the confidence gating logic (simulated, no API call)
+        threshold = 0.6
+
+        high_conf_result = {"text": "clear speech", "confidence": 0.85, "warnings": []}
+        low_conf_result = {"text": "garbled", "confidence": 0.3, "warnings": ["low_confidence"]}
+
+        # High confidence → should proceed
+        needs_confirm_high = (
+            high_conf_result["confidence"] < threshold
+            or "no_speech" in high_conf_result["warnings"]
+            or "low_confidence" in high_conf_result["warnings"]
+        )
+        assert needs_confirm_high is False
+
+        # Low confidence → should confirm
+        needs_confirm_low = (
+            low_conf_result["confidence"] < threshold
+            or "no_speech" in low_conf_result["warnings"]
+            or "low_confidence" in low_conf_result["warnings"]
+        )
+        assert needs_confirm_low is True
+
 
 # =============================================================================
 # Text-to-Speech Tests

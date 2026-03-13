@@ -30,6 +30,7 @@ OnVerifyFailAction = Literal["disclaimer", "cited_facts_only", "refuse"]
 RISK_PATTERNS: list[re.Pattern] = [
     re.compile(p, re.IGNORECASE)
     for p in [
+        # English patterns
         r"\b\d+\s*(?:ml|mg|gm?|kg|l|cc|ppm)\b",      # numeric dose units
         r"\bdos(?:age|e)\b",
         r"\bspray\s+(?:rate|schedule|amount)\b",
@@ -41,6 +42,15 @@ RISK_PATTERNS: list[re.Pattern] = [
         r"\bherbicide\s+(?:amount|quantity|rate)\b",
         r"\binsecticide\s+(?:amount|quantity|rate)\b",
         r"\bper\s+(?:acre|hectare|bigha|liter|litre)\b",
+        # Bengali patterns (মাত্রা = dosage, কীটনাশক = pesticide, etc.)
+        r"মাত্রা",          # dosage
+        r"কীটনাশক",        # pesticide
+        r"ছত্রাকনাশক",     # fungicide
+        r"আগাছানাশক",      # herbicide
+        r"কতটুকু.*দিতে হবে",  # "how much to apply"
+        r"\d+\s*(?:মিলি|গ্রাম|কেজি|লিটার)",  # Bengali numeric units
+        r"প্রতি\s*(?:একর|হেক্টর|বিঘা|লিটার)",  # per acre/hectare/bigha
+        r"স্প্রে\s*(?:হার|পরিমাণ)",  # spray rate/amount
     ]
 ]
 
@@ -69,6 +79,23 @@ REFUSE_BN = (
     "ক্ষতিকর হতে পারে। অনুগ্রহ করে আপনার স্থানীয় কৃষি সম্প্রসারণ "
     "কর্মকর্তার সাথে পরামর্শ করুন।"
 )
+
+ESCALATION_EN = (
+    "⚠️ This question involves chemical dosage or application rates. "
+    "For safety, please consult:\n"
+    "• Your local agricultural extension officer\n"
+    "• The product label instructions\n"
+    "• Bangladesh Agricultural Research Institute (BARI): +880-2-9270534"
+)
+
+ESCALATION_BN = (
+    "⚠️ এই প্রশ্নটি রাসায়নিক মাত্রা বা প্রয়োগের হার সংক্রান্ত। "
+    "নিরাপত্তার জন্য অনুগ্রহ করে পরামর্শ করুন:\n"
+    "• আপনার স্থানীয় কৃষি সম্প্রসারণ কর্মকর্তা\n"
+    "• পণ্যের লেবেল নির্দেশাবলী\n"
+    "• বাংলাদেশ কৃষি গবেষণা ইনস্টিটিউট (BARI): +৮৮০-২-৯২৭০৫৩৪"
+)
+
 
 
 def is_risky_query(query: str) -> bool:

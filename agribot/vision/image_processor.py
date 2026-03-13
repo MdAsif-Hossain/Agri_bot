@@ -51,7 +51,8 @@ class ImageProcessor:
         """
         Analyze a crop/plant image and return a textual description.
 
-        Tries VLM captioning first, then falls back to OCR + heuristics.
+        Uses OCR + heuristic analysis. VLM captioning is a placeholder
+        and not currently functional.
 
         Args:
             image_path: Path to the image file (JPG, PNG, etc.)
@@ -59,31 +60,76 @@ class ImageProcessor:
         Returns:
             Text description of the image content/symptoms
         """
+        result = self.describe_image_structured(image_path)
+        return result.build_query_text()
+
+    def describe_image_structured(
+        self, image_path: str | Path, classifier=None
+    ):
+        """
+        Analyze a crop/plant image and return structured analysis.
+
+        Args:
+            image_path: Path to the image file.
+            classifier: Optional CropClassifier instance for enhanced analysis.
+
+        Returns:
+            ImageAnalysisResult with structured fields.
+        """
+        from agribot.vision.schema import ImageAnalysisResult, PossibleCondition
+
         image_path = Path(image_path)
         if not image_path.exists():
             raise FileNotFoundError(f"Image not found: {image_path}")
 
-        parts = []
+        result = ImageAnalysisResult()
 
-        # 1. Try VLM captioning
-        vlm_caption = self._vlm_caption(image_path)
-        if vlm_caption:
-            parts.append(f"Visual analysis: {vlm_caption}")
-
-        # 2. OCR for any text in the image
+        # 1. OCR for any text in the image
         ocr_text = self._ocr_extract(image_path)
         if ocr_text:
-            parts.append(f"Text in image: {ocr_text}")
+            result.ocr_text = ocr_text
+            # Extract keywords from OCR text
+            words = [w.strip().lower() for w in ocr_text.split() if len(w.strip()) > 3]
+            result.keywords.extend(words[:10])
 
-        # 3. Color/symptom heuristics
+        # 2. Color/symptom heuristics
         symptom_hints = self._analyze_symptoms(image_path)
         if symptom_hints:
-            parts.append(f"Observed symptoms: {symptom_hints}")
+            result.symptom_hints = [h.strip() for h in symptom_hints.split(";")]
+            # Extract keywords from symptom text
+            for hint in result.symptom_hints:
+                key_words = [w for w in hint.split() if len(w) > 4]
+                result.keywords.extend(key_words[:3])
 
-        if not parts:
-            return "Image uploaded but could not extract meaningful information. Please describe the issue in text."
+        # 3. Optional classifier-assisted path
+        if classifier is not None and hasattr(classifier, "is_available") and classifier.is_available:
+            try:
+                conditions = classifier.predict(image_path)
+                if conditions:
+                    result.possible_conditions = conditions
+                    result.pipeline_used = "classifier_assisted"
+                    logger.info(
+                        "Classifier predicted %d conditions (top: %s %.1f%%)",
+                        len(conditions),
+                        conditions[0].label,
+                        conditions[0].confidence * 100,
+                    )
+                else:
+                    result.pipeline_used = "ocr_baseline"
+            except Exception as e:
+                logger.warning("Classifier failed, using baseline: %s", e)
+                result.pipeline_used = "ocr_fallback"
+                result.limitations.append(f"Classifier error: {e}")
+        else:
+            result.pipeline_used = "ocr_baseline"
 
-        return " | ".join(parts)
+        # Deduplicate keywords
+        result.keywords = list(dict.fromkeys(result.keywords))
+
+        if not result.ocr_text and not result.symptom_hints:
+            result.quality_flags.append("no_features_extracted")
+
+        return result
 
     def _vlm_caption(self, image_path: Path) -> str:
         """

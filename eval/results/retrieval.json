@@ -1,0 +1,64 @@
+{
+  "aggregate": {
+    "avg_recall@3": 0.0,
+    "avg_ndcg@3": 0.0,
+    "avg_recall@5": 0.0,
+    "avg_ndcg@5": 0.0,
+    "avg_recall@10": 0.0,
+    "avg_ndcg@10": 0.0,
+    "avg_mrr": 0.0
+  },
+  "per_query": [
+    {
+      "query": "What causes rice blast disease?",
+      "recall@3": 0.0,
+      "ndcg@3": 0.0,
+      "recall@5": 0.0,
+      "ndcg@5": 0.0,
+      "recall@10": 0.0,
+      "ndcg@10": 0.0,
+      "mrr": 0.0
+    },
+    {
+      "query": "How to treat leaf blight in wheat?",
+      "recall@3": 0.0,
+      "ndcg@3": 0.0,
+      "recall@5": 0.0,
+      "ndcg@5": 0.0,
+      "recall@10": 0.0,
+      "ndcg@10": 0.0,
+      "mrr": 0.0
+    },
+    {
+      "query": "Best fertilizer for tomato cultivation",
+      "recall@3": 0.0,
+      "ndcg@3": 0.0,
+      "recall@5": 0.0,
+      "ndcg@5": 0.0,
+      "recall@10": 0.0,
+      "ndcg@10": 0.0,
+      "mrr": 0.0
+    },
+    {
+      "query": "What are the symptoms of stem borer infestation in rice?",
+      "recall@3": 0.0,
+      "ndcg@3": 0.0,
+      "recall@5": 0.0,
+      "ndcg@5": 0.0,
+      "recall@10": 0.0,
+      "ndcg@10": 0.0,
+      "mrr": 0.0
+    },
+    {
+      "query": "How to control aphids in mustard?",
+      "recall@3": 0.0,
+      "ndcg@3": 0.0,
+      "recall@5": 0.0,
+      "ndcg@5": 0.0,
+      "recall@10": 0.0,
+      "ndcg@10": 0.0,
+      "mrr": 0.0
+    }
+  ],
+  "n_queries": 5
+}
