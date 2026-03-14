@@ -113,7 +113,17 @@ export const sendVoiceConfirm = (text: string, traceId: string) =>
     sendChat(text, "voice_confirmed", traceId);
 
 export async function sendVoice(blob: Blob): Promise<ChatResponse> {
-    const f = new FormData(); f.append("audio", blob, "recording.wav");
+    const ext = blob.type.includes("webm")
+        ? "webm"
+        : blob.type.includes("ogg")
+            ? "ogg"
+            : blob.type.includes("mpeg") || blob.type.includes("mp3")
+                ? "mp3"
+                : blob.type.includes("wav")
+                    ? "wav"
+                    : "bin";
+    const f = new FormData();
+    f.append("audio", blob, `recording.${ext}`);
     const r = await fetch(`${API}/v1/chat/voice`, { method: "POST", body: f });
     if (!r.ok) throw new Error((await r.json().catch(() => ({ detail: "" }))).detail || `API ${r.status}`);
     return r.json();

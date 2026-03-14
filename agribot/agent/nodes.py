@@ -13,7 +13,7 @@ import logging
 from llama_cpp import Llama
 
 from agribot.agent.state import AgentState
-from agribot.retrieval.hybrid import HybridRetriever, EvidenceChunk
+from agribot.retrieval.hybrid import HybridRetriever
 from agribot.retrieval.reranker import Reranker
 from agribot.knowledge_graph.entity_linker import EntityLinker
 from agribot.translation.bangla_t5 import BanglaTranslator

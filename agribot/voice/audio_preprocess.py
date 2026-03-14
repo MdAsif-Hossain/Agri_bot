@@ -9,10 +9,9 @@ Two paths:
 Also enforces maximum duration.
 """
 
-import io
 import logging
+import os
 import shutil
-import struct
 import subprocess
 import tempfile
 import wave
@@ -96,16 +95,47 @@ def check_ffmpeg() -> bool:
 # ---------------------------------------------------------------------------
 
 _ffmpeg_cache: Optional[bool] = None
+_ffmpeg_bin: Optional[str] = None
+
+
+def _resolve_ffmpeg_binary() -> Optional[str]:
+    """Resolve an ffmpeg binary path from env, PATH, or common winget location."""
+    # 1) Explicit override
+    env_path = os.environ.get("AGRIBOT_FFMPEG_PATH", "").strip()
+    if env_path and Path(env_path).exists():
+        return env_path
+
+    # 2) PATH lookup
+    in_path = shutil.which("ffmpeg")
+    if in_path:
+        return in_path
+
+    # 3) Common winget install location (Windows)
+    winget_root = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WinGet" / "Packages"
+    if winget_root.exists():
+        candidates = sorted(
+            winget_root.glob("Gyan.FFmpeg_*/ffmpeg-*/bin/ffmpeg.exe"),
+            key=lambda p: str(p),
+            reverse=True,
+        )
+        if candidates:
+            return str(candidates[0])
+
+    return None
 
 
 def _ffmpeg_available() -> bool:
     """Check and cache ffmpeg availability."""
-    global _ffmpeg_cache
+    global _ffmpeg_cache, _ffmpeg_bin
     if _ffmpeg_cache is not None:
         return _ffmpeg_cache
-    _ffmpeg_cache = shutil.which("ffmpeg") is not None
+
+    _ffmpeg_bin = _resolve_ffmpeg_binary()
+    _ffmpeg_cache = _ffmpeg_bin is not None
     if not _ffmpeg_cache:
         logger.warning("ffmpeg not found; audio preprocessing limited to WAV input")
+    else:
+        logger.info("ffmpeg detected at: %s", _ffmpeg_bin)
     return _ffmpeg_cache
 
 
@@ -121,8 +151,12 @@ def _preprocess_ffmpeg(input_path: Path, target_sr: int) -> tuple[Path, dict]:
     os.close(out_fd)
     out_path = Path(out_path_str)
 
+    ffmpeg_bin = _resolve_ffmpeg_binary()
+    if not ffmpeg_bin:
+        raise RuntimeError("ffmpeg binary not found")
+
     cmd = [
-        "ffmpeg", "-y",
+        ffmpeg_bin, "-y",
         "-i", str(input_path),
         "-ac", "1",                     # mono
         "-ar", str(target_sr),          # resample

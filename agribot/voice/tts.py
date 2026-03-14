@@ -76,7 +76,7 @@ class TextToSpeech:
                         "bengali" in voice_name
                         or "bangla" in voice_name
                         or "bn" in voice_name
-                        or any("bn" in l or "bengali" in l for l in voice_langs)
+                        or any("bn" in lang or "bengali" in lang for lang in voice_langs)
                     ):
                         self._voices["bn"] = voice.id
                         logger.info("Found Bengali voice: %s", voice.name)
@@ -84,7 +84,7 @@ class TextToSpeech:
                     # Detect English voice
                     if (
                         "english" in voice_name
-                        or any("en" in l for l in voice_langs)
+                        or any("en" in lang for lang in voice_langs)
                     ):
                         if "en" not in self._voices:
                             self._voices["en"] = voice.id

@@ -13,7 +13,6 @@ def draw_er_diagram():
     box_w = 3.5
     box_h = 2.0
     
-    entity_color = '#dbeafe'  # Light Blue for Tables
     header_color = '#3b82f6'  # Darker Blue for Headers
     edge_color = '#1e3a8a'
     text_color = '#1f2937'

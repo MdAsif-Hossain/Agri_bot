@@ -88,8 +88,8 @@ class CropClassifier:
                 labels_path = self.model_path.with_suffix(".txt")
                 if labels_path.exists():
                     self._labels = [
-                        l.strip() for l in labels_path.read_text().strip().split("\n")
-                        if l.strip()
+                        label.strip() for label in labels_path.read_text().strip().split("\n")
+                        if label.strip()
                     ]
                 else:
                     logger.warning("Labels file not found: %s", labels_path)

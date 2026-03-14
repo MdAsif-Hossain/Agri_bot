@@ -67,7 +67,7 @@ def check_bundle():
 
     # Show manifest details if exists
     if manifest_ok:
-        print(f"\n📋 Manifest:")
+        print("\n📋 Manifest:")
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         for k, v in manifest.items():
             print(f"   {k}: {v}")

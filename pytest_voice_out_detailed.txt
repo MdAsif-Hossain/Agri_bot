@@ -1,0 +1,143 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.0.2, pluggy-1.6.0 -- F:\Projects\Agri_bot\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: F:\Projects\Agri_bot
+plugins: anyio-4.12.1, langsmith-0.7.13, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 23 items
+
+tests/test_voice.py::TestSpeechToText::test_init_default_params PASSED   [  4%]
+tests/test_voice.py::TestSpeechToText::test_init_custom_params PASSED    [  8%]
+tests/test_voice.py::TestSpeechToText::test_invalid_model_size_raises PASSED [ 13%]
+tests/test_voice.py::TestSpeechToText::test_valid_model_sizes PASSED     [ 17%]
+tests/test_voice.py::TestSpeechToText::test_transcribe_file_not_found PASSED [ 21%]
+tests/test_voice.py::TestSpeechToText::test_transcribe_returns_expected_format FAILED [ 26%]
+tests/test_voice.py::TestSpeechToText::test_transcribe_with_forced_language FAILED [ 30%]
+tests/test_voice.py::TestSpeechToText::test_structured_return_has_confidence PASSED [ 34%]
+tests/test_voice.py::TestSpeechToText::test_low_confidence_emits_warning PASSED [ 39%]
+tests/test_voice.py::TestSpeechToText::test_no_speech_emits_warning PASSED [ 43%]
+tests/test_voice.py::TestSpeechToText::test_confidence_gating_threshold PASSED [ 47%]
+tests/test_voice.py::TestTextToSpeech::test_init_default_params PASSED   [ 52%]
+tests/test_voice.py::TestTextToSpeech::test_init_custom_rate PASSED      [ 56%]
+tests/test_voice.py::TestTextToSpeech::test_init_custom_bengali_voice PASSED [ 60%]
+tests/test_voice.py::TestTextToSpeech::test_speak_empty_text_noop PASSED [ 65%]
+tests/test_voice.py::TestTextToSpeech::test_save_audio_rejects_empty PASSED [ 69%]
+tests/test_voice.py::TestTextToSpeech::test_list_voices_returns_list PASSED [ 73%]
+tests/test_voice.py::TestTextToSpeech::test_has_bengali_voice_detection PASSED [ 78%]
+tests/test_voice.py::TestTextToSpeech::test_no_bengali_voice PASSED      [ 82%]
+tests/test_voice.py::TestSingletons::test_get_stt_returns_instance PASSED [ 86%]
+tests/test_voice.py::TestSingletons::test_get_stt_returns_same_instance PASSED [ 91%]
+tests/test_voice.py::TestSingletons::test_get_tts_returns_instance PASSED [ 95%]
+tests/test_voice.py::TestSingletons::test_get_tts_returns_same_instance PASSED [100%]
+
+================================== FAILURES ===================================
+__________ TestSpeechToText.test_transcribe_returns_expected_format ___________
+
+self = <tests.test_voice.TestSpeechToText object at 0x000001BFF3DE33E0>
+mock_ensure = <MagicMock name='_ensure_model' id='1923942039472'>
+
+    @patch("agribot.voice.stt.SpeechToText._ensure_model")
+    def test_transcribe_returns_expected_format(self, mock_ensure):
+        """Transcription result has the expected dict structure."""
+        from agribot.voice.stt import SpeechToText
+    
+        stt = SpeechToText()
+    
+        # Create a mock segment
+        mock_segment = MagicMock()
+        mock_segment.start = 0.0
+        mock_segment.end = 2.5
+        mock_segment.text = " Hello world "
+        mock_segment.avg_logprob = -0.5
+    
+        # Mock the transcription info
+        mock_info = MagicMock()
+        mock_info.language = "en"
+        mock_info.language_probability = 0.95
+    
+        stt._model = MagicMock()
+        stt._model.transcribe.return_value = ([mock_segment], mock_info)
+    
+        # Create a temp file to transcribe
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            f.write(b"fake audio data")
+            tmp_path = f.name
+    
+        try:
+>           result = stt.transcribe(tmp_path)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_voice.py:100: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+agribot\voice\stt.py:200: in transcribe
+    warnings = _build_warnings(
+agribot\voice\stt.py:283: in _build_warnings
+    high_nospeech = sum(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+.0 = <list_iterator object at 0x000001BFF3E40AF0>
+
+    high_nospeech = sum(
+        1 for s in segment_list
+>       if s.get("no_speech_prob", 0) > 0.6
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+E   TypeError: '>' not supported between instances of 'MagicMock' and 'float'
+
+agribot\voice\stt.py:285: TypeError
+____________ TestSpeechToText.test_transcribe_with_forced_language ____________
+
+self = <tests.test_voice.TestSpeechToText object at 0x000001BFF3DE3650>
+mock_ensure = <MagicMock name='_ensure_model' id='1923942202352'>
+
+    @patch("agribot.voice.stt.SpeechToText._ensure_model")
+    def test_transcribe_with_forced_language(self, mock_ensure):
+        """Forced language is passed through to the model."""
+        from agribot.voice.stt import SpeechToText
+    
+        stt = SpeechToText()
+    
+        mock_segment = MagicMock()
+        mock_segment.start = 0.0
+        mock_segment.end = 1.0
+        mock_segment.text = "\u099f\u09c7\u09b8\u09cd\u099f"
+        mock_segment.avg_logprob = -0.1
+    
+        mock_info = MagicMock()
+        mock_info.language = "bn"
+        mock_info.language_probability = 0.99
+    
+        stt._model = MagicMock()
+        stt._model.transcribe.return_value = ([mock_segment], mock_info)
+    
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            f.write(b"fake audio data")
+            tmp_path = f.name
+    
+        try:
+>           stt.transcribe(tmp_path, language="bn")
+
+tests\test_voice.py:140: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+agribot\voice\stt.py:200: in transcribe
+    warnings = _build_warnings(
+agribot\voice\stt.py:283: in _build_warnings
+    high_nospeech = sum(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+.0 = <list_iterator object at 0x000001BFF3ECCFA0>
+
+    high_nospeech = sum(
+        1 for s in segment_list
+>       if s.get("no_speech_prob", 0) > 0.6
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+E   TypeError: '>' not supported between instances of 'MagicMock' and 'float'
+
+agribot\voice\stt.py:285: TypeError
+=========================== short test summary info ===========================
+FAILED tests/test_voice.py::TestSpeechToText::test_transcribe_returns_expected_format - TypeError: '>' not supported between instances of 'MagicMock' and 'float'
+FAILED tests/test_voice.py::TestSpeechToText::test_transcribe_with_forced_language - TypeError: '>' not supported between instances of 'MagicMock' and 'float'
+======================== 2 failed, 21 passed in 0.13s =========================

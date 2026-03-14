@@ -6,8 +6,6 @@ These are integration tests that require indexes to be built first.
 import sys
 from pathlib import Path
 
-import pytest
-import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:

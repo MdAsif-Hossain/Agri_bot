@@ -137,7 +137,7 @@ def create_class_diagram():
     try:
         display(dot)
         print("Success! Downlaod 'class_diagram_ingestion.png' from the Colab file browser.")
-    except Exception as e:
+    except Exception:
         print("Successfully generated 'class_diagram_ingestion.png' on disk.")
 
 if __name__ == '__main__':

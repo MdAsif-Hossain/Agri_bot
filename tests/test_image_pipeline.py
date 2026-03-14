@@ -6,16 +6,14 @@ All tests use mocks — no actual models or images required.
 """
 
 from unittest.mock import MagicMock, patch
-from pathlib import Path
 
-import pytest
 
 
 class TestImageAnalysisResult:
     """Test the ImageAnalysisResult data class."""
 
     def test_to_dict(self):
-        from agribot.vision.schema import ImageAnalysisResult, PossibleCondition
+        from agribot.vision.schema import ImageAnalysisResult
 
         result = ImageAnalysisResult(
             pipeline_used="ocr_baseline",
@@ -151,7 +149,7 @@ class TestImageProcessorStructured:
         result = proc.describe_image_structured(img_path, classifier=mock_classifier)
 
         assert result.pipeline_used == "ocr_fallback"
-        assert any("error" in l.lower() for l in result.limitations)
+        assert any("error" in limitation.lower() for limitation in result.limitations)
 
     @patch("agribot.vision.image_processor.ImageProcessor._ocr_extract", return_value="text")
     @patch("agribot.vision.image_processor.ImageProcessor._analyze_symptoms", return_value="spots")

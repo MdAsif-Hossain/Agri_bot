@@ -5,9 +5,7 @@ All tests use mocks — no ffmpeg or actual audio files required.
 """
 
 import io
-import struct
 import wave
-import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 

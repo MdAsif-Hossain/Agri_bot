@@ -1,0 +1,193 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.0.2, pluggy-1.6.0 -- F:\Projects\Agri_bot\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: F:\Projects\Agri_bot
+plugins: anyio-4.12.1, langsmith-0.7.13, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 117 items
+
+tests/test_agent.py::TestAgentState::test_state_has_required_fields PASSED [  0%]
+tests/test_agent.py::TestAgentState::test_initial_state_template PASSED  [  1%]
+tests/test_agent.py::TestGradeRouter::test_sufficient_routes_to_generate FAILED [  2%]
+tests/test_agent.py::TestGradeRouter::test_insufficient_routes_to_rewrite FAILED [  3%]
+tests/test_agent.py::TestGradeRouter::test_max_retries_routes_to_generate FAILED [  4%]
+tests/test_agent.py::TestGradeRouter::test_max_retries_boundary FAILED   [  5%]
+tests/test_api.py::TestAPIModels::test_chat_request_validation PASSED    [  5%]
+tests/test_api.py::TestAPIModels::test_chat_request_rejects_empty PASSED [  6%]
+tests/test_api.py::TestAPIModels::test_chat_response_defaults PASSED     [  7%]
+tests/test_api.py::TestAPIModels::test_health_response PASSED            [  8%]
+tests/test_api.py::TestAPIModels::test_initial_state_builder PASSED      [  9%]
+tests/test_audio_preprocess.py::TestPreprocessStdlib::test_mono_16k_output PASSED [ 10%]
+tests/test_audio_preprocess.py::TestPreprocessStdlib::test_already_canonical_wav PASSED [ 11%]
+tests/test_audio_preprocess.py::TestPreprocessStdlib::test_duration_enforcement PASSED [ 11%]
+tests/test_audio_preprocess.py::TestPreprocessStdlib::test_non_wav_without_ffmpeg_raises PASSED [ 12%]
+tests/test_audio_preprocess.py::TestPreprocessStdlib::test_file_not_found PASSED [ 13%]
+tests/test_audio_preprocess.py::TestPreprocessStdlib::test_short_audio_warning PASSED [ 14%]
+tests/test_audio_preprocess.py::TestPreprocessFfmpeg::test_ffmpeg_called_correctly PASSED [ 15%]
+tests/test_audio_preprocess.py::TestCheckFfmpeg::test_ffmpeg_found PASSED [ 16%]
+tests/test_audio_preprocess.py::TestCheckFfmpeg::test_ffmpeg_not_found PASSED [ 17%]
+tests/test_config.py::test_config_loads PASSED                           [ 17%]
+tests/test_config.py::test_config_paths_resolved PASSED                  [ 18%]
+tests/test_config.py::test_config_data_dir_under_base PASSED             [ 19%]
+tests/test_config.py::test_config_retrieval_weights_sum PASSED           [ 20%]
+tests/test_config.py::test_config_chunk_overlap_less_than_size PASSED    [ 21%]
+tests/test_config.py::test_config_toc_keywords_not_empty PASSED          [ 22%]
+tests/test_grounding_policy.py::TestRiskDetection::test_detects_dosage_units PASSED [ 23%]
+tests/test_grounding_policy.py::TestRiskDetection::test_detects_dosage_keywords PASSED [ 23%]
+tests/test_grounding_policy.py::TestRiskDetection::test_detects_application_quantities PASSED [ 24%]
+tests/test_grounding_policy.py::TestRiskDetection::test_safe_queries_pass PASSED [ 25%]
+tests/test_grounding_policy.py::TestRiskDetection::test_pesticide_rate_queries PASSED [ 26%]
+tests/test_grounding_policy.py::TestRiskDetection::test_bengali_risk_patterns PASSED [ 27%]
+tests/test_grounding_policy.py::TestRiskDetection::test_safe_bengali_queries PASSED [ 28%]
+tests/test_grounding_policy.py::TestRiskDetection::test_escalation_messages_exist PASSED [ 29%]
+tests/test_grounding_policy.py::TestCitedFacts::test_extracts_supported_sentences PASSED [ 29%]
+tests/test_grounding_policy.py::TestCitedFacts::test_empty_evidence_returns_fallback PASSED [ 30%]
+tests/test_grounding_policy.py::TestCitedFacts::test_empty_answer_returns_empty PASSED [ 31%]
+tests/test_grounding_policy.py::TestEnforcePolicyStrict::test_verified_answer_passes PASSED [ 32%]
+tests/test_grounding_policy.py::TestEnforcePolicyStrict::test_unverified_strict_refuse PASSED [ 33%]
+tests/test_grounding_policy.py::TestEnforcePolicyStrict::test_unverified_strict_disclaimer PASSED [ 34%]
+tests/test_grounding_policy.py::TestEnforcePolicyStrict::test_unverified_strict_cited_facts_only PASSED [ 35%]
+tests/test_grounding_policy.py::TestEnforcePolicyStrict::test_risky_query_unverified_always_refuses PASSED [ 35%]
+tests/test_grounding_policy.py::TestEnforcePolicyStrict::test_should_refuse_returns_refuse PASSED [ 36%]
+tests/test_grounding_policy.py::TestEnforcePolicyStrict::test_follow_up_suggestions_on_refuse PASSED [ 37%]
+tests/test_grounding_policy.py::TestEnforcePolicyLenient::test_lenient_adds_disclaimer PASSED [ 38%]
+tests/test_image_pipeline.py::TestImageAnalysisResult::test_to_dict PASSED [ 39%]
+tests/test_image_pipeline.py::TestImageAnalysisResult::test_to_dict_with_conditions PASSED [ 40%]
+tests/test_image_pipeline.py::TestImageAnalysisResult::test_build_query_text_empty PASSED [ 41%]
+tests/test_image_pipeline.py::TestImageAnalysisResult::test_build_query_text_with_data PASSED [ 41%]
+tests/test_image_pipeline.py::TestImageAnalysisResult::test_build_query_text_with_user_query PASSED [ 42%]
+tests/test_image_pipeline.py::TestImageProcessorStructured::test_baseline_no_classifier PASSED [ 43%]
+tests/test_image_pipeline.py::TestImageProcessorStructured::test_no_features_extracted PASSED [ 44%]
+tests/test_image_pipeline.py::TestImageProcessorStructured::test_classifier_assisted_path PASSED [ 45%]
+tests/test_image_pipeline.py::TestImageProcessorStructured::test_classifier_error_fallback PASSED [ 46%]
+tests/test_image_pipeline.py::TestImageProcessorStructured::test_classifier_unavailable_falls_back PASSED [ 47%]
+tests/test_image_pipeline.py::TestClassifier::test_missing_model_not_available PASSED [ 47%]
+tests/test_image_pipeline.py::TestClassifier::test_predict_returns_empty_when_unavailable PASSED [ 48%]
+tests/test_ingestion.py::TestPageClassification::test_content_page PASSED [ 49%]
+tests/test_ingestion.py::TestPageClassification::test_low_signal_page PASSED [ 50%]
+tests/test_ingestion.py::TestPageClassification::test_toc_page PASSED    [ 51%]
+tests/test_ingestion.py::TestPageClassification::test_reference_page PASSED [ 52%]
+tests/test_ingestion.py::TestHeaderFooterDetection::test_detects_repeated_lines PASSED [ 52%]
+tests/test_ingestion.py::TestHeaderFooterDetection::test_no_detection_on_few_pages PASSED [ 53%]
+tests/test_ingestion.py::TestHeaderFooterDetection::test_removes_repeated_lines PASSED [ 54%]
+tests/test_ingestion.py::TestChunker::test_basic_chunking PASSED         [ 55%]
+tests/test_ingestion.py::TestChunker::test_chunk_provenance PASSED       [ 56%]
+tests/test_ingestion.py::TestChunker::test_min_chunk_length_filter PASSED [ 57%]
+tests/test_ingestion.py::TestChunker::test_chunk_serialization PASSED    [ 58%]
+tests/test_ingestion.py::TestChunker::test_chunk_citation PASSED         [ 58%]
+tests/test_ingestion.py::TestChunker::test_skips_low_signal_short_pages PASSED [ 59%]
+tests/test_knowledge_graph.py::TestKnowledgeGraphSchema::test_add_entity PASSED [ 60%]
+tests/test_knowledge_graph.py::TestKnowledgeGraphSchema::test_get_entity PASSED [ 61%]
+tests/test_knowledge_graph.py::TestKnowledgeGraphSchema::test_add_alias PASSED [ 62%]
+tests/test_knowledge_graph.py::TestKnowledgeGraphSchema::test_find_by_alias PASSED [ 63%]
+tests/test_knowledge_graph.py::TestKnowledgeGraphSchema::test_find_by_alias_case_insensitive PASSED [ 64%]
+tests/test_knowledge_graph.py::TestKnowledgeGraphSchema::test_find_by_partial_alias PASSED [ 64%]
+tests/test_knowledge_graph.py::TestKnowledgeGraphSchema::test_add_relation PASSED [ 65%]
+tests/test_knowledge_graph.py::TestKnowledgeGraphSchema::test_get_neighbors PASSED [ 66%]
+tests/test_knowledge_graph.py::TestKnowledgeGraphSchema::test_get_stats PASSED [ 67%]
+tests/test_knowledge_graph.py::TestKnowledgeGraphSchema::test_get_nonexistent_entity PASSED [ 68%]
+tests/test_knowledge_graph.py::TestSeedData::test_seed_loads PASSED      [ 69%]
+tests/test_knowledge_graph.py::TestSeedData::test_seed_idempotent PASSED [ 70%]
+tests/test_knowledge_graph.py::TestSeedData::test_rice_entity_exists PASSED [ 70%]
+tests/test_knowledge_graph.py::TestSeedData::test_blast_entity_exists PASSED [ 71%]
+tests/test_knowledge_graph.py::TestSeedData::test_dialect_alias_exists PASSED [ 72%]
+tests/test_knowledge_graph.py::TestEntityLinker::test_link_entities_english PASSED [ 73%]
+tests/test_knowledge_graph.py::TestEntityLinker::test_link_entities_bengali PASSED [ 74%]
+tests/test_knowledge_graph.py::TestEntityLinker::test_expand_query PASSED [ 75%]
+tests/test_knowledge_graph.py::TestEntityLinker::test_expand_query_no_match PASSED [ 76%]
+tests/test_knowledge_graph.py::TestEntityLinker::test_link_empty_query PASSED [ 76%]
+tests/test_retrieval.py::TestEvidenceChunk::test_evidence_chunk_creation PASSED [ 77%]
+tests/test_retrieval.py::TestEvidenceChunk::test_evidence_chunk_rerank_score PASSED [ 78%]
+tests/test_retrieval.py::TestHybridRetrieverUnit::test_rrf_fusion_logic PASSED [ 79%]
+tests/test_retrieval.py::TestHybridRetrieverUnit::test_keep_weight_applied PASSED [ 80%]
+tests/test_voice.py::TestSpeechToText::test_init_default_params PASSED   [ 81%]
+tests/test_voice.py::TestSpeechToText::test_init_custom_params PASSED    [ 82%]
+tests/test_voice.py::TestSpeechToText::test_invalid_model_size_raises PASSED [ 82%]
+tests/test_voice.py::TestSpeechToText::test_valid_model_sizes PASSED     [ 83%]
+tests/test_voice.py::TestSpeechToText::test_transcribe_file_not_found PASSED [ 84%]
+tests/test_voice.py::TestSpeechToText::test_transcribe_returns_expected_format FAILED [ 85%]
+tests/test_voice.py::TestSpeechToText::test_transcribe_with_forced_language FAILED [ 86%]
+tests/test_voice.py::TestSpeechToText::test_structured_return_has_confidence PASSED [ 87%]
+tests/test_voice.py::TestSpeechToText::test_low_confidence_emits_warning PASSED [ 88%]
+tests/test_voice.py::TestSpeechToText::test_no_speech_emits_warning PASSED [ 88%]
+tests/test_voice.py::TestSpeechToText::test_confidence_gating_threshold PASSED [ 89%]
+tests/test_voice.py::TestTextToSpeech::test_init_default_params PASSED   [ 90%]
+tests/test_voice.py::TestTextToSpeech::test_init_custom_rate PASSED      [ 91%]
+tests/test_voice.py::TestTextToSpeech::test_init_custom_bengali_voice PASSED [ 92%]
+tests/test_voice.py::TestTextToSpeech::test_speak_empty_text_noop PASSED [ 93%]
+tests/test_voice.py::TestTextToSpeech::test_save_audio_rejects_empty PASSED [ 94%]
+tests/test_voice.py::TestTextToSpeech::test_list_voices_returns_list PASSED [ 94%]
+tests/test_voice.py::TestTextToSpeech::test_has_bengali_voice_detection PASSED [ 95%]
+tests/test_voice.py::TestTextToSpeech::test_no_bengali_voice PASSED      [ 96%]
+tests/test_voice.py::TestSingletons::test_get_stt_returns_instance PASSED [ 97%]
+tests/test_voice.py::TestSingletons::test_get_stt_returns_same_instance PASSED [ 98%]
+tests/test_voice.py::TestSingletons::test_get_tts_returns_instance PASSED [ 99%]
+tests/test_voice.py::TestSingletons::test_get_tts_returns_same_instance PASSED [100%]
+
+================================== FAILURES ===================================
+_____________ TestGradeRouter.test_sufficient_routes_to_generate ______________
+tests\test_agent.py:63: in test_sufficient_routes_to_generate
+    from agribot.agent.graph import _grade_router
+E   ImportError: cannot import name '_grade_router' from 'agribot.agent.graph' (F:\Projects\Agri_bot\agribot\agent\graph.py)
+_____________ TestGradeRouter.test_insufficient_routes_to_rewrite _____________
+tests\test_agent.py:68: in test_insufficient_routes_to_rewrite
+    from agribot.agent.graph import _grade_router
+E   ImportError: cannot import name '_grade_router' from 'agribot.agent.graph' (F:\Projects\Agri_bot\agribot\agent\graph.py)
+_____________ TestGradeRouter.test_max_retries_routes_to_generate _____________
+tests\test_agent.py:73: in test_max_retries_routes_to_generate
+    from agribot.agent.graph import _grade_router
+E   ImportError: cannot import name '_grade_router' from 'agribot.agent.graph' (F:\Projects\Agri_bot\agribot\agent\graph.py)
+__________________ TestGradeRouter.test_max_retries_boundary __________________
+tests\test_agent.py:78: in test_max_retries_boundary
+    from agribot.agent.graph import _grade_router
+E   ImportError: cannot import name '_grade_router' from 'agribot.agent.graph' (F:\Projects\Agri_bot\agribot\agent\graph.py)
+__________ TestSpeechToText.test_transcribe_returns_expected_format ___________
+tests\test_voice.py:99: in test_transcribe_returns_expected_format
+    result = stt.transcribe(tmp_path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+agribot\voice\stt.py:194: in transcribe
+    confidence = max(0.0, min(1.0, 1.0 + avg_logprob))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: '<' not supported between instances of 'MagicMock' and 'float'
+---------------------------- Captured stdout call -----------------------------
+SpeechToText initialized (model=base, device=auto, beam=5, vad=True, lang=bn)
+Transcribing: tmpj_wv88_r.wav (lang=bn, beam=5)
+------------------------------ Captured log call ------------------------------
+INFO     agribot.voice.stt:stt.py:79 SpeechToText initialized (model=base, device=auto, beam=5, vad=True, lang=bn)
+INFO     agribot.voice.stt:stt.py:138 Transcribing: tmpj_wv88_r.wav (lang=bn, beam=5)
+____________ TestSpeechToText.test_transcribe_with_forced_language ____________
+tests\test_voice.py:138: in test_transcribe_with_forced_language
+    stt.transcribe(tmp_path, language="bn")
+agribot\voice\stt.py:194: in transcribe
+    confidence = max(0.0, min(1.0, 1.0 + avg_logprob))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: '<' not supported between instances of 'MagicMock' and 'float'
+---------------------------- Captured stdout call -----------------------------
+SpeechToText initialized (model=base, device=auto, beam=5, vad=True, lang=bn)
+Transcribing: tmprl8i7u6o.wav (lang=bn, beam=5)
+------------------------------ Captured log call ------------------------------
+INFO     agribot.voice.stt:stt.py:79 SpeechToText initialized (model=base, device=auto, beam=5, vad=True, lang=bn)
+INFO     agribot.voice.stt:stt.py:138 Transcribing: tmprl8i7u6o.wav (lang=bn, beam=5)
+============================== warnings summary ===============================
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+tests/test_audio_preprocess.py::TestPreprocessStdlib::test_mono_16k_output
+  F:\Projects\Agri_bot\agribot\voice\audio_preprocess.py:163: DeprecationWarning: 'audioop' is deprecated and slated for removal in Python 3.13
+    import audioop
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_agent.py::TestGradeRouter::test_sufficient_routes_to_generate
+FAILED tests/test_agent.py::TestGradeRouter::test_insufficient_routes_to_rewrite
+FAILED tests/test_agent.py::TestGradeRouter::test_max_retries_routes_to_generate
+FAILED tests/test_agent.py::TestGradeRouter::test_max_retries_boundary - Impo...
+FAILED tests/test_voice.py::TestSpeechToText::test_transcribe_returns_expected_format
+FAILED tests/test_voice.py::TestSpeechToText::test_transcribe_with_forced_language
+================== 6 failed, 111 passed, 4 warnings in 6.97s ==================

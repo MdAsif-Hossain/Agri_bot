@@ -70,6 +70,7 @@ def _init_services() -> dict:
     from agribot.translation.bangla_t5 import get_translator
     from agribot.voice.stt import get_stt
     from agribot.voice.tts import get_tts
+    from agribot.voice.audio_preprocess import check_ffmpeg
 
     svc = {}
 
@@ -132,8 +133,14 @@ def _init_services() -> dict:
         min_silence_ms=settings.WHISPER_MIN_SILENCE_MS,
         language_hint=settings.WHISPER_LANGUAGE_HINT,
         task=settings.WHISPER_TASK,
+        banglaspeech2text_enabled=settings.BANGLASPEECH2TEXT_ENABLED,
+        banglaspeech2text_model_id=settings.BANGLASPEECH2TEXT_MODEL_ID,
+        vosk_fallback_enabled=settings.VOSK_FALLBACK_ENABLED,
+        vosk_bn_model_path=settings.VOSK_BN_MODEL_PATH,
     )
+    svc["vosk_model_ready"] = Path(settings.VOSK_BN_MODEL_PATH).exists()
     svc["tts"] = get_tts(rate=settings.TTS_RATE, bengali_voice_name=settings.TTS_BENGALI_VOICE)
+    svc["ffmpeg_available"] = check_ffmpeg()
 
     # 9. Optional image classifier
     if settings.IMAGE_CLASSIFIER_ENABLED and settings.IMAGE_CLASSIFIER_MODEL_PATH:
@@ -508,6 +515,10 @@ async def v1_health():
             "reranker": True,
             "translator": True,
             "stt": _services.get("stt") is not None,
+            "ffmpeg": _services.get("ffmpeg_available", False),
+            "banglaspeech2text": settings.BANGLASPEECH2TEXT_ENABLED,
+            "vosk_fallback": settings.VOSK_FALLBACK_ENABLED,
+            "vosk_model_ready": _services.get("vosk_model_ready", False),
             "tts": _services.get("tts") is not None,
             "image_classifier": classifier is not None and classifier.is_available if classifier else False,
             "vlm": False,  # Honest: VLM not implemented
@@ -567,10 +578,14 @@ async def v1_chat_voice(audio: UploadFile = File(..., description="Audio file (W
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
-            logger.warning("Preprocessing fallback to raw: %s", e)
-            canonical_path = Path(tmp_path)
-            preprocess_warnings.append("preprocess_fallback")
-            extra_timings["audio_preprocess"] = round((time.perf_counter() - preprocess_start) * 1000, 1)
+            logger.warning("Audio preprocessing failed: %s", e)
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Audio decoding failed before transcription. "
+                    "Please retry with a clear recording (WAV/WEBM/MP3) and ensure ffmpeg is installed."
+                ),
+            )
 
         # --- Step 2: STT transcription (with semaphore, then release before LLM) ---
         stt_start = time.perf_counter()
@@ -585,6 +600,27 @@ async def v1_chat_voice(audio: UploadFile = File(..., description="Audio file (W
             stt_result = await loop.run_in_executor(
                 None, stt.transcribe, str(canonical_path)
             )
+
+            # If language detection is uncertain, retry with forced Bengali.
+            # This improves robustness for short/noisy Bengali queries.
+            should_retry_bn = (
+                stt_result.get("language") != "bn"
+                or "uncertain_language" in stt_result.get("warnings", [])
+                or "script_mismatch" in stt_result.get("warnings", [])
+            )
+            if should_retry_bn:
+                stt_bn = await loop.run_in_executor(
+                    None,
+                    lambda: stt.transcribe(str(canonical_path), language="bn"),
+                )
+                if stt_bn.get("confidence", 0.0) >= stt_result.get("confidence", 0.0):
+                    logger.info(
+                        "Using Bengali-forced STT retry",
+                        prev_lang=stt_result.get("language", ""),
+                        prev_conf=stt_result.get("confidence", 0.0),
+                        new_conf=stt_bn.get("confidence", 0.0),
+                    )
+                    stt_result = stt_bn
         finally:
             _stt_semaphore.release()
 
@@ -616,6 +652,10 @@ async def v1_chat_voice(audio: UploadFile = File(..., description="Audio file (W
             asr_confidence < settings.ASR_CONFIDENCE_THRESHOLD
             or "no_speech" in asr_warnings
             or "low_confidence" in asr_warnings
+            or "uncertain_language" in asr_warnings
+            or "script_mismatch" in asr_warnings
+            or "repetitive_transcript" in asr_warnings
+            or asr_language not in ("bn", "en")
             or not transcript.strip()
         )
 

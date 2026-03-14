@@ -9,7 +9,7 @@ detect/remove repeated headers/footers and classify page types.
 import re
 import logging
 from pathlib import Path
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from collections import Counter
 
 logger = logging.getLogger(__name__)

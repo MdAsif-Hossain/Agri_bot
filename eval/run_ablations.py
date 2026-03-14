@@ -93,7 +93,6 @@ CONFIGS = [
 
 def run_ablation(config: dict, dataset_path: str) -> dict:
     """Run a single ablation config and collect metrics."""
-    from config import settings
     from eval.eval_retrieval import evaluate_retrieval
 
     # Note: full ablation requires loading models per config.
@@ -139,7 +138,7 @@ def main():
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    print(f"\n📊 Ablation Summary:")
+    print("\n📊 Ablation Summary:")
     for r in results:
         status = "✅" if r["status"] == "completed" else "❌"
         print(f"   {status} {r['config']['name']}: {r['status']}")

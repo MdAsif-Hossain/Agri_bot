@@ -76,7 +76,7 @@ class ImageProcessor:
         Returns:
             ImageAnalysisResult with structured fields.
         """
-        from agribot.vision.schema import ImageAnalysisResult, PossibleCondition
+        from agribot.vision.schema import ImageAnalysisResult
 
         image_path = Path(image_path)
         if not image_path.exists():

@@ -3,7 +3,6 @@ Tests for the Knowledge Graph schema, entity linker, and seed data.
 """
 
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -12,7 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from agribot.knowledge_graph.schema import KnowledgeGraph, Entity, Alias
+from agribot.knowledge_graph.schema import KnowledgeGraph
 from agribot.knowledge_graph.seed_data import seed_knowledge_graph
 from agribot.knowledge_graph.entity_linker import EntityLinker
 

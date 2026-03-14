@@ -3,7 +3,6 @@ AgriBot Central Configuration
 All tunable parameters in one place.
 """
 
-import os
 from pathlib import Path
 from typing import Optional
 from pydantic_settings import BaseSettings
@@ -23,7 +22,7 @@ class AgriConfig(BaseSettings):
 
     # --- LLM ---
     LLM_N_CTX: int = 4096
-    LLM_N_GPU_LAYERS: int = 20  # RTX 3050 4GB
+    LLM_N_GPU_LAYERS: int = 15  # RTX 3050 4GB (Lowering from 20 to avoid OOM latency spikes)
     LLM_MAX_TOKENS: int = 512
     LLM_TEMPERATURE: float = 0.1  # Low for factual answers
 
@@ -49,12 +48,16 @@ class AgriConfig(BaseSettings):
     ON_VERIFY_FAIL: str = "disclaimer"   # "disclaimer" | "cited_facts_only" | "refuse"
 
     # --- Voice / STT ---
-    WHISPER_MODEL_SIZE: str = "base"     # faster-whisper model: tiny/base/small/medium
-    WHISPER_BEAM_SIZE: int = 5           # Beam search width (higher = better, slower)
-    WHISPER_VAD_FILTER: bool = True      # Enable Voice Activity Detection filter
+    WHISPER_MODEL_SIZE: str = "medium"   # Better latency/quality trade-off for RTX 3050 or CPU fallback
+    WHISPER_BEAM_SIZE: int = 8           # Beam search width (higher = better, slower)
+    WHISPER_VAD_FILTER: bool = False     # Disable VAD by default; short Bangla speech can be over-pruned
     WHISPER_MIN_SILENCE_MS: int = 500    # Min silence for VAD segmentation (ms)
-    WHISPER_LANGUAGE_HINT: Optional[str] = "bn"  # Language hint (None = auto-detect)
+    WHISPER_LANGUAGE_HINT: Optional[str] = "bn"  # Prefer Bengali decoding for Bangla voice input
     WHISPER_TASK: str = "transcribe"     # "transcribe" or "translate"
+    BANGLASPEECH2TEXT_ENABLED: bool = True   # Enable Bengali-specialized ASR backend
+    BANGLASPEECH2TEXT_MODEL_ID: str = "bangla-speech-processing/BanglaASR"  # Package key/name or HF model ID fallback
+    VOSK_FALLBACK_ENABLED: bool = True    # Try Vosk Bengali fallback when Whisper output is unreliable
+    VOSK_BN_MODEL_PATH: str = ""          # Path to local Vosk Bengali model directory
     ASR_CONFIDENCE_THRESHOLD: float = 0.6  # Below this → needs_confirmation
     VOICE_MAX_DURATION_SECONDS: int = 60   # Max audio duration after decode
     TTS_RATE: int = 150                  # TTS speaking rate (words per minute)
@@ -100,6 +103,8 @@ class AgriConfig(BaseSettings):
             self.KG_DB_PATH = self.DATA_DIR / "knowledge_graph.db"
         if self.MODEL_PATH is None:
             self.MODEL_PATH = self.BASE_DIR / "models" / "qwen2.5-1.5b-instruct-q8_0.gguf"
+        if not self.VOSK_BN_MODEL_PATH:
+            self.VOSK_BN_MODEL_PATH = str(self.BASE_DIR / "models" / "vosk-bn")
 
     model_config = ConfigDict(
         env_prefix="AGRIBOT_",

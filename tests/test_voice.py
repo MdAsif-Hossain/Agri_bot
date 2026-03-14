@@ -6,7 +6,7 @@ All tests use mocking — no actual model downloads or audio processing required
 
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -80,6 +80,8 @@ class TestSpeechToText:
         mock_segment.start = 0.0
         mock_segment.end = 2.5
         mock_segment.text = " Hello world "
+        mock_segment.avg_logprob = -0.5
+        mock_segment.no_speech_prob = 0.0
 
         # Mock the transcription info
         mock_info = MagicMock()
@@ -121,6 +123,8 @@ class TestSpeechToText:
         mock_segment.start = 0.0
         mock_segment.end = 1.0
         mock_segment.text = "টেস্ট"
+        mock_segment.avg_logprob = -0.1
+        mock_segment.no_speech_prob = 0.0
 
         mock_info = MagicMock()
         mock_info.language = "bn"
@@ -135,7 +139,7 @@ class TestSpeechToText:
             tmp_path = f.name
 
         try:
-            result = stt.transcribe(tmp_path, language="bn")
+            stt.transcribe(tmp_path, language="bn")
             stt._model.transcribe.assert_called_once()
             call_kwargs = stt._model.transcribe.call_args
             assert call_kwargs[1]["language"] == "bn"

@@ -5,7 +5,6 @@ Tests for the agent state and graph structure.
 import sys
 from pathlib import Path
 
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -61,21 +60,25 @@ class TestGradeRouter:
     """Tests for the grade routing logic."""
 
     def test_sufficient_routes_to_generate(self):
-        from agribot.agent.graph import _grade_router
+        from agribot.agent.graph import _make_grade_router
+        router = _make_grade_router()
         state = {"evidence_grade": "SUFFICIENT", "retry_count": 0}
-        assert _grade_router(state) == "generate"
+        assert router(state) == "generate"
 
     def test_insufficient_routes_to_rewrite(self):
-        from agribot.agent.graph import _grade_router
+        from agribot.agent.graph import _make_grade_router
+        router = _make_grade_router()
         state = {"evidence_grade": "INSUFFICIENT", "retry_count": 0}
-        assert _grade_router(state) == "rewrite"
+        assert router(state) == "rewrite"
 
     def test_max_retries_routes_to_generate(self):
-        from agribot.agent.graph import _grade_router
+        from agribot.agent.graph import _make_grade_router
+        router = _make_grade_router(max_retries=2)
         state = {"evidence_grade": "INSUFFICIENT", "retry_count": 2}
-        assert _grade_router(state) == "generate"
+        assert router(state) == "generate"
 
     def test_max_retries_boundary(self):
-        from agribot.agent.graph import _grade_router
+        from agribot.agent.graph import _make_grade_router
+        router = _make_grade_router(max_retries=2)
         state = {"evidence_grade": "INSUFFICIENT", "retry_count": 1}
-        assert _grade_router(state) == "rewrite"  # Still below max
+        assert router(state) == "rewrite"  # Still below max

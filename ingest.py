@@ -73,7 +73,7 @@ def main():
     print(f"   ✅ Created {len(chunks)} chunks")
 
     # --- 3. Build Indexes ---
-    print(f"\n🧠 Building FAISS + BM25 indexes...")
+    print("\n🧠 Building FAISS + BM25 indexes...")
     print(f"   Embedding model: {settings.EMBEDDING_MODEL}")
     print(f"   Index directory: {settings.INDEX_DIR}")
 
@@ -123,7 +123,7 @@ def main():
     print(f"   📄 {len(pages)} pages → {len(chunks)} chunks")
     print(f"   🔍 FAISS: {bundle.faiss_index.ntotal} vectors")
     print(f"   🌿 KG: {stats['entities']} entities")
-    print(f"\n   Next: Run `streamlit run app.py` to start the UI.")
+    print("\n   Next: Run `streamlit run app.py` to start the UI.")
     print("=" * 60)
 
 

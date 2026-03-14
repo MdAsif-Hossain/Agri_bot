@@ -127,7 +127,7 @@ def create_professional_er_diagram():
     try:
         display(dot)
         print("Success! Download agribot_er_diagram.png from the Colab file browser.")
-    except Exception as e:
+    except Exception:
         print("Diagram saved to agribot_er_diagram.png")
 
 if __name__ == '__main__':

@@ -11,8 +11,103 @@ export default function Composer({ onText, onVoice, onImage, disabled }: {
     const [image, setImage] = useState<File | null>(null);
     const [imgUrl, setImgUrl] = useState<string | null>(null);
     const imageRef = useRef<HTMLInputElement>(null);
-    const mediaRef = useRef<MediaRecorder | null>(null);
-    const chunks = useRef<BlobPart[]>([]);
+    const mediaStreamRef = useRef<MediaStream | null>(null);
+    const audioCtxRef = useRef<AudioContext | null>(null);
+    const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+    const processorRef = useRef<ScriptProcessorNode | null>(null);
+    const gainRef = useRef<GainNode | null>(null);
+    const pcmChunksRef = useRef<Float32Array[]>([]);
+
+    const mergeFloat32 = (chunks: Float32Array[]): Float32Array => {
+        const total = chunks.reduce((sum, c) => sum + c.length, 0);
+        const out = new Float32Array(total);
+        let offset = 0;
+        for (const c of chunks) {
+            out.set(c, offset);
+            offset += c.length;
+        }
+        return out;
+    };
+
+    const resampleLinear = (input: Float32Array, inputRate: number, targetRate: number): Float32Array => {
+        if (inputRate === targetRate) return input;
+        const ratio = inputRate / targetRate;
+        const outLength = Math.max(1, Math.round(input.length / ratio));
+        const out = new Float32Array(outLength);
+        for (let i = 0; i < outLength; i++) {
+            const pos = i * ratio;
+            const left = Math.floor(pos);
+            const right = Math.min(left + 1, input.length - 1);
+            const frac = pos - left;
+            out[i] = input[left] * (1 - frac) + input[right] * frac;
+        }
+        return out;
+    };
+
+    const trimSilence = (input: Float32Array, threshold = 0.01): Float32Array => {
+        let start = 0;
+        let end = input.length - 1;
+
+        while (start < input.length && Math.abs(input[start]) < threshold) start += 1;
+        while (end > start && Math.abs(input[end]) < threshold) end -= 1;
+
+        if (start >= end) return input;
+        return input.slice(start, end + 1);
+    };
+
+    const normalizePeak = (input: Float32Array, targetPeak = 0.9): Float32Array => {
+        let peak = 0;
+        for (let i = 0; i < input.length; i++) {
+            const a = Math.abs(input[i]);
+            if (a > peak) peak = a;
+        }
+        if (peak <= 1e-6) return input;
+        const gain = Math.min(8.0, targetPeak / peak);
+        if (gain <= 1.02) return input;
+        const out = new Float32Array(input.length);
+        for (let i = 0; i < input.length; i++) {
+            out[i] = Math.max(-1, Math.min(1, input[i] * gain));
+        }
+        return out;
+    };
+
+    const encodeWav = (samples: Float32Array, sampleRate: number): ArrayBuffer => {
+        const numChannels = 1;
+        const bitsPerSample = 16;
+        const blockAlign = numChannels * (bitsPerSample / 8);
+        const byteRate = sampleRate * blockAlign;
+        const dataSize = samples.length * 2;
+        const buffer = new ArrayBuffer(44 + dataSize);
+        const view = new DataView(buffer);
+
+        const writeString = (offset: number, value: string) => {
+            for (let i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i));
+        };
+
+        writeString(0, "RIFF");
+        view.setUint32(4, 36 + dataSize, true);
+        writeString(8, "WAVE");
+        writeString(12, "fmt ");
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, byteRate, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, bitsPerSample, true);
+        writeString(36, "data");
+        view.setUint32(40, dataSize, true);
+
+        let offset = 44;
+        for (let i = 0; i < samples.length; i++) {
+            const s = Math.max(-1, Math.min(1, samples[i]));
+            const int16 = s < 0 ? s * 0x8000 : s * 0x7fff;
+            view.setInt16(offset, int16, true);
+            offset += 2;
+        }
+
+        return buffer;
+    };
 
     useEffect(() => {
         if (image) { const u = URL.createObjectURL(image); setImgUrl(u); return () => URL.revokeObjectURL(u); }
@@ -30,19 +125,75 @@ export default function Composer({ onText, onVoice, onImage, disabled }: {
     };
 
     const toggleVoice = async () => {
-        if (isRecording && mediaRef.current) { mediaRef.current.stop(); return; }
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRef.current = new MediaRecorder(stream);
-            chunks.current = [];
-            mediaRef.current.ondataavailable = e => { if (e.data.size > 0) chunks.current.push(e.data); };
-            mediaRef.current.onstop = () => {
-                const blob = new Blob(chunks.current, { type: "audio/wav" });
+        if (isRecording) {
+            try {
+                const sourceRate = audioCtxRef.current?.sampleRate || 48000;
+
+                processorRef.current?.disconnect();
+                sourceRef.current?.disconnect();
+                gainRef.current?.disconnect();
+
+                if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+                    await audioCtxRef.current.close();
+                }
+                mediaStreamRef.current?.getTracks().forEach(t => t.stop());
+
+                const merged = mergeFloat32(pcmChunksRef.current);
+                const targetRate = 16000;
+                const resampled = resampleLinear(merged, sourceRate, targetRate);
+                const trimmed = trimSilence(resampled, 0.01);
+                const prepared = normalizePeak(trimmed.length > 4000 ? trimmed : resampled, 0.9);
+                const wav = encodeWav(prepared, targetRate);
+                const blob = new Blob([wav], { type: "audio/wav" });
                 onVoice(blob);
+            } catch (e) {
+                console.error("Voice finalize failed", e);
+                alert("Could not process recorded audio.");
+            } finally {
                 setIsRecording(false);
-                stream.getTracks().forEach(t => t.stop());
+                pcmChunksRef.current = [];
+                audioCtxRef.current = null;
+                mediaStreamRef.current = null;
+                sourceRef.current = null;
+                processorRef.current = null;
+                gainRef.current = null;
+            }
+            return;
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    channelCount: 1,
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false,
+                },
+            });
+
+            const audioCtx = new AudioContext();
+            await audioCtx.resume();
+            const source = audioCtx.createMediaStreamSource(stream);
+            const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+            const silent = audioCtx.createGain();
+            silent.gain.value = 0;
+
+            pcmChunksRef.current = [];
+
+            processor.onaudioprocess = (event) => {
+                const input = event.inputBuffer.getChannelData(0);
+                pcmChunksRef.current.push(new Float32Array(input));
             };
-            mediaRef.current.start();
+
+            source.connect(processor);
+            processor.connect(silent);
+            silent.connect(audioCtx.destination);
+
+            mediaStreamRef.current = stream;
+            audioCtxRef.current = audioCtx;
+            sourceRef.current = source;
+            processorRef.current = processor;
+            gainRef.current = silent;
+
             setIsRecording(true);
         } catch (e) { console.error("Mic access denied", e); alert("Microphone access denied."); }
     };

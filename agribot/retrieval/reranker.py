@@ -5,7 +5,6 @@ Uses FlashRank for fast, lightweight reranking.
 """
 
 import logging
-from pathlib import Path
 
 from flashrank import Ranker, RerankRequest
 
