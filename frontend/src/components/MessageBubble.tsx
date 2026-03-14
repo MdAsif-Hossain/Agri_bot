@@ -33,6 +33,8 @@ export default function MessageBubble({ message: m, onFollowUp }: { message: Mes
             await audioRef.current.play();
         } catch (e) {
             console.error("TTS failed", e);
+            const msg = e instanceof Error ? e.message : "TTS failed";
+            window.alert(msg);
             setIsPlaying(false);
         }
     };

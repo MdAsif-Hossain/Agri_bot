@@ -1,4 +1,4 @@
-.PHONY: setup install test run run-dev ingest eval build-frontend docker-build docker-run
+.PHONY: setup install test run run-dev ingest build-frontend
 
 # Global Python alias
 PYTHON := python
@@ -29,28 +29,6 @@ run-dev:
 ingest:
 	$(PYTHON) ingest.py
 
-# Run offline bundle checker
-check-bundle:
-	$(PYTHON) scripts/offline_bundle.py
-
 # Run Python tests
 test:
 	$(PYTHON) -m pytest tests/ -v
-
-# Run all evaluations
-eval:
-	$(PYTHON) -m eval.eval_retrieval
-	$(PYTHON) -m eval.eval_grounding
-	$(PYTHON) -m eval.eval_refusal
-	$(PYTHON) -m eval.eval_latency
-
-# Run ablation experiments
-ablations:
-	$(PYTHON) -m eval.run_ablations
-
-# Docker commands
-docker-build:
-	docker build -t agribot:latest .
-
-docker-run:
-	docker-compose up -d

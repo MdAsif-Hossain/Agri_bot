@@ -1,3 +1,0 @@
-{"audio_path": "data/eval_audio/sample_01_bn.wav", "reference_text_bn": "ধানের ব্লাস্ট রোগ কিভাবে হয়?", "reference_text_en": "How does rice blast disease occur?"}
-{"audio_path": "data/eval_audio/sample_02_bn.wav", "reference_text_bn": "গমের পাতা ঝরে যাওয়ার কারণ কি?", "reference_text_en": "What causes wheat leaf drop?"}
-{"audio_path": "data/eval_audio/sample_03_en.wav", "reference_text_bn": "", "reference_text_en": "What is the best fertilizer for tomatoes?"}

@@ -815,6 +815,17 @@ async def v1_tts(request: TTSRequest):
     if not tts:
         raise HTTPException(status_code=503, detail="TTS service not available")
 
+    # Fail fast for Bengali when system Bengali voice is unavailable.
+    # This avoids pyttsx3 hangs observed on some Windows setups.
+    if request.language == "bn" and not tts.has_bengali_voice():
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Bengali TTS voice is not installed on this system. "
+                "Install a Bengali voice pack in Windows Speech settings."
+            ),
+        )
+
     try:
         audio_path = tts.save_audio_temp(request.text, language=request.language)
         audio_path = Path(audio_path)

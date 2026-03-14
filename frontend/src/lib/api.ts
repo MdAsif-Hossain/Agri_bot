@@ -140,7 +140,10 @@ export const getHealth = () => json<HealthResponse>("/v1/health");
 
 export async function getTTSAudio(text: string, language: "en" | "bn"): Promise<string> {
     const r = await fetch(`${API}/v1/tts`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, language }) });
-    if (!r.ok) throw new Error("TTS error");
+    if (!r.ok) {
+        const err = await r.json().catch(() => ({} as { detail?: string }));
+        throw new Error(err.detail || `TTS error (${r.status})`);
+    }
     return URL.createObjectURL(await r.blob());
 }
 
