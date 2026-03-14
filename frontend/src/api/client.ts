@@ -7,7 +7,7 @@
 
 import type { ChatResponse, HealthResponse, TTSRequest } from "./types";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_URL || "";
 
 async function request<T>(
     path: string,
@@ -31,7 +31,7 @@ async function request<T>(
 
 /** Send a text chat query */
 export async function sendChat(query: string): Promise<ChatResponse> {
-    return request<ChatResponse>("/chat", {
+    return request<ChatResponse>("/v1/chat", {
         method: "POST",
         body: JSON.stringify({ query }),
     });
@@ -42,7 +42,7 @@ export async function sendVoice(audioBlob: Blob): Promise<ChatResponse> {
     const form = new FormData();
     form.append("audio", audioBlob, "recording.wav");
 
-    const res = await fetch(`${API_BASE}/chat/voice`, {
+    const res = await fetch(`${API_BASE}/v1/chat/voice`, {
         method: "POST",
         body: form,
     });
@@ -64,7 +64,7 @@ export async function sendImage(
     form.append("image", imageFile);
     if (query) form.append("query", query);
 
-    const res = await fetch(`${API_BASE}/chat/image`, {
+    const res = await fetch(`${API_BASE}/v1/chat/image`, {
         method: "POST",
         body: form,
     });
@@ -79,12 +79,12 @@ export async function sendImage(
 
 /** Get system health status */
 export async function getHealth(): Promise<HealthResponse> {
-    return request<HealthResponse>("/health");
+    return request<HealthResponse>("/v1/health");
 }
 
 /** Request TTS audio and return a playable blob URL */
 export async function getTTSAudio(req: TTSRequest): Promise<string> {
-    const res = await fetch(`${API_BASE}/tts`, {
+    const res = await fetch(`${API_BASE}/v1/tts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(req),

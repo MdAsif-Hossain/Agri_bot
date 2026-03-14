@@ -2,6 +2,32 @@
 
 export interface ChatRequest {
   query: string;
+  input_mode?: string;
+  trace_id?: string;
+}
+
+export interface DiagnosticsBlock {
+  trace_id: string;
+  timings_ms: Record<string, number>;
+  mode_flags: string[];
+  warnings: string[];
+}
+
+export interface VoiceBlock {
+  transcript: string;
+  asr_language: string;
+  asr_confidence: number;
+  asr_warnings: string[];
+  needs_confirmation: boolean;
+  transcript_suspected: string;
+  suggested_actions: string[];
+}
+
+export interface ImageBlock {
+  pipeline_used: string;
+  analysis_summary: Record<string, unknown>;
+  limitations: string[];
+  possible_conditions: { label: string; confidence: number }[];
 }
 
 export interface ChatResponse {
@@ -14,6 +40,12 @@ export interface ChatResponse {
   verification_reason: string;
   retry_count: number;
   input_mode: string;
+  grounding_action: string;
+  follow_up_suggestions: string[];
+  parsed_query?: string;
+  diagnostics: DiagnosticsBlock;
+  voice?: VoiceBlock | null;
+  image?: ImageBlock | null;
 }
 
 export interface KGEntity {
@@ -33,6 +65,9 @@ export interface HealthResponse {
   kg_entities: number;
   kg_aliases: number;
   kg_relations: number;
+  manifest: Record<string, unknown> | null;
+  enabled_modules: Record<string, boolean>;
+  grounding_mode: string;
 }
 
 export interface TTSRequest {
@@ -45,7 +80,18 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   answer_bn?: string;
-  input_mode?: "text" | "voice" | "image";
+  input_mode?: "text" | "voice" | "voice_confirmed" | "image";
+  citations?: string[];
+  kg_entities?: KGEntity[];
+  evidence_grade?: string;
+  is_verified?: boolean;
+  verification_reason?: string;
+  retry_count?: number;
+  grounding_action?: string;
+  follow_up_suggestions?: string[];
+  diagnostics?: DiagnosticsBlock;
+  voice?: VoiceBlock | null;
+  image?: ImageBlock | null;
   evidence?: EvidenceData;
   timestamp: number;
 }
