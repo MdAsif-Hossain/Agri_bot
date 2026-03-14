@@ -30,7 +30,7 @@ def get_llm(
 
     Thread-safe lazy initialization.
     """
-    from llama_cpp import Llama as _Llama
+    from llama_cpp import Llama
 
     global _llm_instance
 
@@ -42,7 +42,7 @@ def get_llm(
             return _llm_instance
 
         logger.info("Loading LLM from %s (n_ctx=%d, n_gpu_layers=%d)", model_path, n_ctx, n_gpu_layers)
-        _llm_instance = _Llama(
+        _llm_instance = Llama(
             model_path=model_path,
             n_ctx=n_ctx,
             n_gpu_layers=n_gpu_layers,
