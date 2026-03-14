@@ -4,9 +4,9 @@ Cross-encoder reranker for filtering and reordering retrieved evidence.
 Uses FlashRank for fast, lightweight reranking.
 """
 
-import logging
+from __future__ import annotations
 
-from flashrank import Ranker, RerankRequest
+import logging
 
 from agribot.retrieval.hybrid import EvidenceChunk
 from config import settings
@@ -23,6 +23,8 @@ class Reranker:
         threshold: float = 0.15,
         top_n: int = 5,
     ):
+        from flashrank import Ranker
+
         self.threshold = threshold
         self.top_n = top_n
         cache_dir = str(settings.BASE_DIR / "models" / "reranker")
@@ -47,6 +49,8 @@ class Reranker:
         """
         if not evidences:
             return []
+
+        from flashrank import RerankRequest
 
         # Build passages for FlashRank
         passages = [

@@ -134,9 +134,10 @@ class TestPreprocessStdlib:
 class TestPreprocessFfmpeg:
     """Test the ffmpeg path (with mocked subprocess)."""
 
+    @patch("agribot.voice.audio_preprocess._resolve_ffmpeg_binary", return_value="/usr/bin/ffmpeg")
     @patch("agribot.voice.audio_preprocess._ffmpeg_available", return_value=True)
     @patch("subprocess.run")
-    def test_ffmpeg_called_correctly(self, mock_run, mock_ffmpeg, tmp_path):
+    def test_ffmpeg_called_correctly(self, mock_run, mock_ffmpeg, mock_resolve, tmp_path):
         """ffmpeg is called with correct arguments."""
         from agribot.voice.audio_preprocess import preprocess_audio
 

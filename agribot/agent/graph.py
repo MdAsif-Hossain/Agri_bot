@@ -7,28 +7,19 @@ normalize → kg_link → retrieve → rerank → grade →
   └─ SUFFICIENT (or max retries) → generate → translate → verify → enforce_policy → END
 """
 
-import logging
+from __future__ import annotations
 
-from llama_cpp import Llama
-from langgraph.graph import StateGraph, END
+import logging
+from typing import TYPE_CHECKING
 
 from agribot.agent.state import AgentState
-from agribot.agent.nodes import (
-    make_normalize_node,
-    make_kg_link_node,
-    make_retrieve_node,
-    make_rerank_node,
-    make_grade_node,
-    make_rewrite_node,
-    make_generate_node,
-    make_translate_node,
-    make_verify_node,
-)
-from agribot.agent.grounding_policy import make_enforce_policy_node
-from agribot.retrieval.hybrid import HybridRetriever
-from agribot.retrieval.reranker import Reranker
-from agribot.knowledge_graph.entity_linker import EntityLinker
-from agribot.translation.bangla_t5 import BanglaTranslator
+
+if TYPE_CHECKING:
+    from llama_cpp import Llama
+    from agribot.retrieval.hybrid import HybridRetriever
+    from agribot.retrieval.reranker import Reranker
+    from agribot.knowledge_graph.entity_linker import EntityLinker
+    from agribot.translation.bangla_t5 import BanglaTranslator
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +54,7 @@ def build_agent_graph(
     max_retries: int = 2,
     grounding_mode: str = "strict",
     on_verify_fail: str = "disclaimer",
-) -> StateGraph:
+):
     """
     Build and compile the LangGraph agent workflow.
 
@@ -81,6 +72,20 @@ def build_agent_graph(
     Returns:
         Compiled LangGraph StateGraph
     """
+    from langgraph.graph import StateGraph, END
+
+    from agribot.agent.nodes import (
+        make_normalize_node,
+        make_kg_link_node,
+        make_retrieve_node,
+        make_rerank_node,
+        make_grade_node,
+        make_rewrite_node,
+        make_generate_node,
+        make_translate_node,
+        make_verify_node,
+    )
+    from agribot.agent.grounding_policy import make_enforce_policy_node
     # Create nodes bound to their services
     normalize = make_normalize_node(translator=translator)
     kg_link = make_kg_link_node(entity_linker)

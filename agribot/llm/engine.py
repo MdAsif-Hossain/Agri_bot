@@ -4,10 +4,14 @@ LLM inference engine: singleton wrapper around llama-cpp-python.
 Provides structured methods for generation, evidence grading, and verification.
 """
 
+from __future__ import annotations
+
 import logging
 from threading import Lock
+from typing import TYPE_CHECKING
 
-from llama_cpp import Llama
+if TYPE_CHECKING:
+    from llama_cpp import Llama
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +30,8 @@ def get_llm(
 
     Thread-safe lazy initialization.
     """
+    from llama_cpp import Llama as _Llama
+
     global _llm_instance
 
     if _llm_instance is not None:
@@ -36,7 +42,7 @@ def get_llm(
             return _llm_instance
 
         logger.info("Loading LLM from %s (n_ctx=%d, n_gpu_layers=%d)", model_path, n_ctx, n_gpu_layers)
-        _llm_instance = Llama(
+        _llm_instance = _Llama(
             model_path=model_path,
             n_ctx=n_ctx,
             n_gpu_layers=n_gpu_layers,

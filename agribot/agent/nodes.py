@@ -6,11 +6,15 @@ Flow: normalize → kg_link → retrieve → rerank → grade → (rewrite | gen
 Each node records timing in state["timings_ms"] for observability.
 """
 
+from __future__ import annotations
+
 import re
 import time
 import logging
+from typing import TYPE_CHECKING
 
-from llama_cpp import Llama
+if TYPE_CHECKING:
+    from llama_cpp import Llama
 
 from agribot.agent.state import AgentState
 from agribot.retrieval.hybrid import HybridRetriever
